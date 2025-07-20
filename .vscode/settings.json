@@ -1,0 +1,31 @@
+{
+  "git.defaultCloneDirectory": "~/Desktop/project",
+  "git.autofetch": true,
+  "git.confirmSync": false,
+  "git.enableSmartCommit": true,
+  "git.suggestSmartCommit": false,
+  "git.postCommitCommand": "none",
+  "git.pushRepository": "origin",
+  "git.pushBranch": "main",
+  "git.alwaysSignOff": false,
+  "git.fetchOnPull": true,
+  "git.pullBeforePublish": false,
+  "git.showPushSuccessNotification": true,
+  "git.branchProtection": [],
+  "git.publishRepository": false,
+  "git.requireGitUserConfig": false,
+  "git.useCommitInputAsStashMessage": true,
+  "git.allowNoVerifyCommit": true,
+  "github.gitProtocol": "https",
+  "github.remoteNaming": "origin",
+  "github.gitAuthentication": true,
+  "github.copilot.enable": {
+    "*": true,
+    "yaml": false,
+    "plaintext": false
+  },
+  "terminal.integrated.defaultProfile.windows": "Command Prompt",
+  "files.eol": "\n",
+  "editor.insertSpaces": true,
+  "editor.tabSize": 2
+}
