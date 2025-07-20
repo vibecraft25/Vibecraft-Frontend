@@ -226,25 +226,3 @@ export const MCP_STATUS = {
   READY: 'ready',
   ERROR: 'error'
 } as const;
-
-export default {
-  WebSocketMessage,
-  WebSocketResponse,
-  ChatSession,
-  ChatMessage,
-  MCPClientInstance,
-  MCPMessage,
-  MCPError,
-  LangChainMemory,
-  ConversationMessage,
-  WebSocketConnection,
-  ConnectionStats,
-  ServerConfig,
-  SessionCleanupConfig,
-  SessionEvent,
-  ServerEvent,
-  VibeCraftError,
-  MESSAGE_TYPES,
-  SESSION_STATUS,
-  MCP_STATUS
-};

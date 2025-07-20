@@ -282,28 +282,3 @@ export const isChatMessage = (data: any): data is ChatMessage => {
     ['user', 'assistant', 'system'].includes(data.type);
 };
 
-export default {
-  WebSocketMessage,
-  WebSocketResponse,
-  ChatMessage,
-  ChatSession,
-  ConnectionStatus,
-  ConnectionState,
-  ChatUIState,
-  MessageListState,
-  UseWebSocketOptions,
-  UseWebSocketReturn,
-  ChatComponentProps,
-  MessageListProps,
-  MessageInputProps,
-  MessageItemProps,
-  ChatClientConfig,
-  MessageDisplayOptions,
-  ChatError,
-  MESSAGE_TYPES,
-  CONNECTION_STATUS,
-  MESSAGE_STATUS,
-  MESSAGE_TYPE,
-  isWebSocketResponse,
-  isChatMessage
-};
