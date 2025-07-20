@@ -1,0 +1,31 @@
+{
+  "name": "vibecraft-server",
+  "version": "1.0.0",
+  "description": "VibeCraft MCP WebSocket 서버",
+  "main": "websocket-server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node websocket-server.js",
+    "dev": "nodemon websocket-server.js",
+    "build": "tsc",
+    "dev:ts": "nodemon --exec \"npx tsx\" websocket-server.ts"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.7.2",
+    "ws": "^8.14.2",
+    "uuid": "^9.0.1",
+    "langchain": "^0.0.200",
+    "@langchain/core": "^0.1.0",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1",
+    "typescript": "^5.3.0",
+    "@types/node": "^20.0.0",
+    "@types/ws": "^8.5.8",
+    "@types/uuid": "^9.0.7",
+    "@types/cors": "^2.8.17",
+    "tsx": "^4.0.0"
+  }
+}
