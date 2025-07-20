@@ -11,7 +11,8 @@
       "Bash(echo $HOME)",
       "Bash(find:*)",
       "Bash(ls:*)",
-      "Bash(mv:*)"
+      "Bash(mv:*)",
+      "Bash(git remote add:*)"
     ],
     "deny": []
   }
