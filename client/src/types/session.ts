@@ -1,4 +1,4 @@
-export interface ChatSession {
+export interface ChatThread {
   id: string;
   title: string;
   lastMessage?: string;
@@ -8,7 +8,7 @@ export interface ChatSession {
 
 export interface ChatMessage {
   id: string;
-  // sessionId: string;
+  // threadId: string;
   content: string;
   type: "user" | "server";
   timestamp: Date;
@@ -16,7 +16,7 @@ export interface ChatMessage {
 
 export type SSEConnectionState =
   | "IDLE"
-  | "CREATING_SESSION"
+  | "CREATING_THREAD"
   | "CONNECTING"
   | "CONNECTED"
   | "RECONNECTING"
@@ -29,7 +29,7 @@ export type ProcessStatus =
   | "BUILD"         // 대시보드 구축 단계
   | "DEPLOY";       // 배포 단계
 
-export type SessionState =
+export type ThreadState =
   | "FIRST_VISIT"   // 최초 방문, 세션 기록 없음, Intro 표시
   | "IDLE"          // 세션 없음, 빈 채팅 화면 표시
   | "CONNECTING"    // 서버 연결 시도 중
@@ -39,3 +39,6 @@ export type SessionState =
   | "RECEIVING"     // 서버 응답 수신 중
   | "RECONNECTING"  // 연결 끊어져서 재연결 시도 중
   | "ERROR";        // 오류 상태, 재시도 가능
+
+  export type InputType = 
+  | "TEXT"

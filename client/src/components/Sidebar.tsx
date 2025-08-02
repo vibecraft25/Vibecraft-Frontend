@@ -2,7 +2,7 @@ import React from "react";
 import { Drawer, Button, Typography } from "antd";
 import { Settings, ChevronLeft, ChevronRight } from "lucide-react";
 import Chattings, { ChattingsProps } from "./Chattings";
-import { ChatSession } from "../types/session";
+import { ChatThread } from "../types/session";
 
 const { Title } = Typography;
 

@@ -1,6 +1,6 @@
-import { ProcessStatus, SessionState } from "@/types/session";
+import { ProcessStatus, ThreadState } from "@/types/session";
 
-export const PromptBoxSessionMessage: Record<SessionState, string> = {
+export const PromptBoxThreadMessage: Record<ThreadState, string> = {
   IDLE: "어떤 데이터를 시각화하고 싶으신가요? (예: 우리 회사 매출과 날씨의 상관관계를 보여줘)",
   CONNECTING: "서버에 연결하는 중...",
   TYPING: "입력 중... (계속 입력하세요)",

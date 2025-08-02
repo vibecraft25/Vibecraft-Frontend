@@ -60,3 +60,6 @@ Thumbs.db
 # Temporary folders
 tmp/
 temp/
+
+# Server code
+server/

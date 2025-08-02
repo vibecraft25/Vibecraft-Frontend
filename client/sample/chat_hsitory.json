@@ -1,0 +1,61 @@
+{
+  "thread_id": "8cd22816-9c23-4225-a3c0-791cec1c0efc",
+  "values": {
+    "messages": [
+      {
+        "content": "넌 누구야?",
+        "additional_kwargs": {},
+        "response_metadata": {},
+        "type": "human",
+        "name": null,
+        "id": "ff043cd0-bf87-42a5-bad9-43d83f62a0ab",
+        "example": false
+      },
+      {
+        "content": "저는 구글에서 훈련한 대규모 언어 모델입니다.\n\n여러분과 대화하고, 정보를 제공하며, 다양한 작업을 돕기 위해 만들어진 인공지능(AI)입니다.",
+        "additional_kwargs": {},
+        "response_metadata": {
+          "prompt_feedback": {
+            "block_reason": 0,
+            "safety_ratings": []
+          },
+          "finish_reason": "STOP",
+          "safety_ratings": []
+        },
+        "type": "ai",
+        "name": null,
+        "id": "run--4336e8d8-97af-43fb-9a06-9e04b67eaf19-0",
+        "example": false,
+        "tool_calls": [],
+        "invalid_tool_calls": [],
+        "usage_metadata": {
+          "input_tokens": 5,
+          "output_tokens": 42,
+          "total_tokens": 516,
+          "input_token_details": {
+            "cache_read": 0
+          }
+        }
+      }
+    ]
+  },
+  "next": [],
+  "config": {
+    "configurable": {
+      "thread_id": "8cd22816-9c23-4225-a3c0-791cec1c0efc"
+    }
+  },
+  "metadata": {
+    "source": "loop",
+    "step": 1,
+    "parents": {}
+  },
+  "created_at": "2025-07-23T10:37:23.653848+00:00",
+  "parent_config": {
+    "configurable": {
+      "thread_id": "8cd22816-9c23-4225-a3c0-791cec1c0efc",
+      "checkpoint_ns": "",
+      "checkpoint_id": "1f067b10-2f67-6c9a-8000-cd4faf6e533b"
+    }
+  }
+}

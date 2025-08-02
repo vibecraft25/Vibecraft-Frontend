@@ -1,34 +1,23 @@
 import React, { useState, useEffect } from "react";
 import { List, Button, Typography, Tooltip } from "antd";
-import {
-  MessageSquare,
-  Plus,
-  Calendar,
-} from "lucide-react";
+import { MessageSquare, Plus, Calendar } from "lucide-react";
+import { ProcessStatus } from "@/types/session";
+import { ChatItem } from "@/hooks/useSSE";
 
 const { Text } = Typography;
-
-export interface ChatItem {
-  sessionId: string;
-  submit: string;
-  lastMessage: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
 export interface ChattingsProps {
   className?: string;
-  sessionId?: string;
+  threadId?: string;
   history?: ChatItem[];
-  setSessionId: (sessionId: string) => void;
+  setThreadId: (threadId: string) => void;
   onNewChat?: () => void;
 }
 
 const Chattings = ({
   className = "",
-  sessionId,
+  threadId,
   history,
-  setSessionId,
+  setThreadId,
   onNewChat,
 }: ChattingsProps) => {
   const [chatItems, setChatItems] = useState<ChatItem[]>(history ?? []);
@@ -43,14 +32,14 @@ const Chattings = ({
     if (diffDays === 2) return "어제";
     if (diffDays <= 7) return `${diffDays}일 전`;
     return date.toLocaleDateString("ko-KR");
-  }
+  };
 
   // history props 변경 시 chatItems 업데이트
   useEffect(() => {
     setChatItems(history ?? []);
   }, [history]);
 
-  const createNewSession = () => {
+  const createNewThread = () => {
     onNewChat?.();
   };
 
@@ -61,7 +50,7 @@ const Chattings = ({
         <Button
           type="primary"
           icon={<Plus className="w-4 h-4" />}
-          onClick={createNewSession}
+          onClick={createNewThread}
           className="w-full bg-gradient-to-r from-purple-500 to-blue-500 border-0 rounded-lg"
         >
           새 채팅 시작
@@ -74,22 +63,22 @@ const Chattings = ({
           <div className="space-y-1">
             {chatItems.map((item) => (
               <div
-                key={item.sessionId}
+                key={item.rootThreadId}
                 className={`cursor-pointer transition-all duration-200 rounded-lg mx-3 px-3 py-3 group hover:bg-gray-50 ${
-                  item.sessionId === sessionId
+                  item.rootThreadId === threadId
                     ? "bg-gradient-to-r from-purple-50 to-blue-50 border-l-3 border-purple-500"
                     : "hover:bg-gray-50"
                 }`}
-                onClick={() => setSessionId(item.sessionId)}
+                onClick={() => setThreadId(item.rootThreadId)}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0 pr-2">
                     {/* 제목 */}
                     <div className="mb-2">
                       <Text
-                        strong={item.sessionId === sessionId}
+                        strong={item.rootThreadId === threadId}
                         className={`text-sm line-clamp-2 ${
-                          item.sessionId === sessionId
+                          item.rootThreadId === threadId
                             ? "text-purple-700"
                             : "text-gray-800"
                         }`}
@@ -98,25 +87,25 @@ const Chattings = ({
                         {item.submit}
                       </Text>
                     </div>
-                    
-                    {/* 마지막 메시지 */}
+
+                    {/* 마지막 메시지
                     <div className="mb-2">
-                      <Text 
-                        type="secondary" 
+                      <Text
+                        type="secondary"
                         className="text-xs line-clamp-2 text-gray-500"
-                        title={item.lastMessage}
+                        title={item.submit}
                       >
-                        {item.lastMessage}
+                        {item.submit}
                       </Text>
-                    </div>
-                    
+                    </div> */}
+
                     {/* 날짜 */}
                     <div className="flex items-center text-xs text-gray-400">
                       <Calendar className="w-3 h-3 mr-1 flex-shrink-0" />
                       <span>{formatDate(item.updatedAt)}</span>
                     </div>
                   </div>
-                  
+
                   {/* 더보기 버튼 */}
                   <div className="flex-shrink-0">
                     <Tooltip title="더보기">
@@ -145,7 +134,7 @@ const Chattings = ({
             </Text>
             <Button
               type="link"
-              onClick={createNewSession}
+              onClick={createNewThread}
               className="text-purple-600 hover:text-purple-700 p-0"
             >
               첫 번째 채팅을 시작해보세요

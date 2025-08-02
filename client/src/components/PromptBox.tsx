@@ -1,11 +1,12 @@
 import React, { useState } from "react";
 import { Input, Button, message as antMessage } from "antd";
 import { Send, Sparkles, Loader2 } from "lucide-react";
-import { ProcessStatus } from "@/types/session";
+import { InputType, ProcessStatus } from "@/types/session";
 import { PromptBoxProcessMessage } from "@/message/prompt";
 
 interface PromptBoxProps {
   connectionState?: string;
+  inputType: InputType;
   processStatus: ProcessStatus;
   sendMessage: (message: string, userId?: string) => Promise<boolean>;
   placeholder?: string;
@@ -16,6 +17,7 @@ interface PromptBoxProps {
 
 const PromptBox = ({
   connectionState,
+  inputType,
   processStatus,
   sendMessage,
   disabled = false,
@@ -25,7 +27,7 @@ const PromptBox = ({
   const [inputText, setInputText] = useState("");
 
   const isLoading =
-    connectionState === "CREATING_SESSION" ||
+    connectionState === "CREATING_THREAD" ||
     connectionState === "CONNECTING" ||
     connectionState === "RECONNECTING";
 

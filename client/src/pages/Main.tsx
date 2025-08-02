@@ -8,44 +8,47 @@ import Intro from "../components/Intro";
 import PromptBox from "../components/PromptBox";
 import ChatView from "../components/ChatView";
 import Layout from "../components/Layout";
-import { PromptBoxSessionMessage } from "@/message/prompt";
+import { PromptBoxThreadMessage } from "@/message/prompt";
 
 const Main = () => {
-  const [currentSessionId, setCurrentSessionId] = useState<string>();
+  const [currentThreadId, setCurrentThreadId] = useState<string>();
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const {
-    sessionState,
+    threadState,
     processStatus,
-    sessionId,
+    inputType,
+    threadId,
     messages,
+    aiResponse,
     chatItems,
     sendMessage,
     connect,
     startTyping,
     stopTyping,
     startNewChat,
+    fetchProcess,
   } = useSSE({
     serverUrl: "http://localhost:22041",
-    sessionId: currentSessionId,
+    threadId: currentThreadId,
     autoConnect: false,
     maxRetries: 5,
     retryInterval: 3000,
   });
 
-  // currentSessionId가 변경될 때 connect 호출
+  // currentThreadId가 변경될 때 connect 호출
   useEffect(() => {
-    if (currentSessionId && currentSessionId !== sessionId) {
-      connect(currentSessionId);
+    if (currentThreadId && currentThreadId !== threadId) {
+      connect(currentThreadId);
     }
-  }, [currentSessionId, sessionId, connect]);
+  }, [currentThreadId, threadId, connect]);
 
-  // sessionId가 빈값이 되면 currentSessionId도 초기화
+  // threadId가 빈값이 되면 currentThreadId도 초기화
   useEffect(() => {
-    if (sessionId === "" && currentSessionId !== undefined) {
-      setCurrentSessionId(undefined);
+    if (threadId === "" && currentThreadId !== undefined) {
+      setCurrentThreadId(undefined);
     }
-  }, [sessionId, currentSessionId]);
+  }, [threadId, currentThreadId]);
 
   return (
     <Layout
@@ -54,9 +57,9 @@ const Main = () => {
         isOpen: sidebarOpen,
         onToggle: () => setSidebarOpen((prev) => !prev),
         chattingProps: {
-          sessionId: sessionId,
+          threadId: threadId,
           history: chatItems,
-          setSessionId: setCurrentSessionId,
+          setThreadId: setCurrentThreadId,
           onNewChat: startNewChat,
         },
       }}
@@ -70,24 +73,24 @@ const Main = () => {
               <div>
                 <h1 className="text-lg font-semibold text-gray-800">
                   {(() => {
-                    if (!sessionId) {
+                    if (!threadId) {
                       return "새로운 채팅";
                     }
 
                     // 현재 세션의 ChatItem 찾기
                     const currentChatItem = chatItems.find(
-                      (item) => item.sessionId === sessionId
+                      (item) => item.lastThreadId === threadId
                     );
 
                     if (currentChatItem) {
-                      return currentChatItem.topic ?? currentChatItem.submit;
+                      return currentChatItem.submit;
                     }
                     return "새로운 채팅";
                   })()}
                 </h1>
                 <p className="text-sm text-gray-500">
-                  {sessionId
-                    ? `채팅 세션: ${sessionId.slice(0, 8)}...`
+                  {threadId
+                    ? `채팅 세션: ${threadId.slice(0, 8)}...`
                     : "채팅에 연결되어 있지 않습니다."}
                 </p>
               </div>
@@ -98,14 +101,14 @@ const Main = () => {
         {/* 메인 컨텐츠 */}
         <div className="flex-1 flex relative min-h-0">
           <div className="w-full h-full border-r border-gray-200">
-            {sessionState === "FIRST_VISIT" ? (
+            {threadState === "FIRST_VISIT" ? (
               <div className="w-full overflow-hidden h-screen">
                 <Intro />
               </div>
             ) : (
-              <div className="p-6">
+              <div className="flex h-full p-6">
                 <div className="flex-1 overflow-hidden">
-                  {sessionState === "ERROR" ? (
+                  {threadState === "ERROR" ? (
                     <div className="flex items-center justify-center h-full">
                       <div className="text-center">
                         <div className="text-red-500 mb-4">
@@ -138,7 +141,7 @@ const Main = () => {
                         </Button>
                       </div>
                     </div>
-                  ) : sessionState === "CONNECTING" ? (
+                  ) : threadState === "CONNECTING" ? (
                     <div className="flex items-center justify-center h-full">
                       <div className="text-center">
                         <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
@@ -151,13 +154,14 @@ const Main = () => {
                   ) : (
                     <ChatView
                       messages={messages}
+                      aiResponse={aiResponse}
                       isLoading={
-                        sessionState === "SENDING" ||
-                        sessionState === "RECEIVING"
+                        threadState === "SENDING" || threadState === "RECEIVING"
                       }
-                      sessionId={sessionId}
-                      sessionState={sessionState}
+                      threadId={threadId}
+                      threadState={threadState}
                       processStatus={processStatus}
+                      fetchProcess={fetchProcess}
                       className="h-full"
                       maxHeight="100%"
                     />
@@ -170,13 +174,14 @@ const Main = () => {
           {/* Fixed Prompt Box - 메인 컨텐츠 영역 내부에 absolute 배치 */}
           <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 w-full max-w-4xl px-4 z-50">
             <PromptBox
+              inputType={inputType}
               processStatus={processStatus}
-              placeholder={PromptBoxSessionMessage[sessionState]}
+              placeholder={PromptBoxThreadMessage[threadState]}
               disabled={
-                sessionState === "CONNECTING" ||
-                sessionState === "SENDING" ||
-                sessionState === "RECEIVING" ||
-                sessionState === "RECONNECTING"
+                threadState === "CONNECTING" ||
+                threadState === "SENDING" ||
+                threadState === "RECEIVING" ||
+                threadState === "RECONNECTING"
               }
               sendMessage={sendMessage}
               onTyping={startTyping}

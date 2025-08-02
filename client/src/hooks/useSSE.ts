@@ -1,21 +1,33 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { SessionState, ProcessStatus } from "../types/session";
+import { ThreadState, ProcessStatus, InputType } from "../types/session";
 
 // ChatItem 타입 정의
+// export interface ChatItem {
+//   threadId: string;
+//   submit: string; // 사용자가 처음 입력한 메시지
+//   lastMessage: string; // 마지막 메시지 내용
+//   createdAt: string; // 생성 시간
+//   updatedAt: string; // 마지막 업데이트 시간
+//   processStatus: ProcessStatus; // 프로젝트 진행 단계
+//   topic?: string; // 주제 (요약)
+// }
+
 export interface ChatItem {
-  sessionId: string;
-  submit: string; // 사용자가 처음 입력한 메시지
-  lastMessage: string; // 마지막 메시지 내용
+  rootThreadId: string;
+  lastThreadId: string;
+  steps: string[]; // 사용된 세션 진행
+  processStatus: ProcessStatus; // 프로젝트 진행 단계
+  process: Record<ProcessStatus, string[]>; // process 별 사용된 thread
+  submit: string; // 주제 (요약)
+  // lastMessage: string; // 마지막 메시지 내용
   createdAt: string; // 생성 시간
   updatedAt: string; // 마지막 업데이트 시간
-  processStatus: ProcessStatus; // 프로젝트 진행 단계
-  topic?: string; // 주제 (요약)
 }
 
 // SSE 연결 상태
 export type SSEConnectionState =
   | "IDLE"
-  | "CREATING_SESSION"
+  | "CREATING_THREAD"
   | "DISCONNECTED"
   | "CONNECTING"
   | "PENDING"
@@ -26,7 +38,7 @@ export type SSEConnectionState =
 // SSE 메시지 타입
 export interface SSEMessage {
   messageId: string;
-  sessionId: string;
+  threadId: string;
   timestamp: Date;
   type: "user" | "server";
   content: string;
@@ -38,10 +50,17 @@ export interface SSEEvent {
   data: any;
 }
 
+// AI 응답 타입
+export interface AIResponse {
+  content: string;
+  isComplete: boolean;
+  threadId?: string;
+}
+
 // useSSE 옵션
 export interface UseSSEOptions {
   serverUrl?: string;
-  sessionId?: string;
+  threadId?: string;
   autoConnect?: boolean;
   maxRetries?: number;
   retryInterval?: number;
@@ -50,110 +69,122 @@ export interface UseSSEOptions {
 // useSSE 반환 타입
 export interface UseSSEReturn {
   connectionState: SSEConnectionState;
-  sessionState: SessionState;
+  threadState: ThreadState;
   processStatus: ProcessStatus;
-  sessionId: string;
+  inputType: InputType;
+  threadId: string;
   messages: SSEMessage[];
+  aiResponse: AIResponse;
   isConnected: boolean;
   chatItems: ChatItem[];
   addMessage: (message: SSEMessage) => void;
   sendMessage: (message: string, userId?: string) => Promise<boolean>;
-  connect: (sessionId: string) => void;
+  connect: (threadId: string) => void;
   disconnect: () => void;
   clearMessages: () => void;
   startTyping: () => void;
   stopTyping: () => void;
   startNewChat: () => void;
   getChatItems: () => ChatItem[];
+  fetchProcess: (status: ProcessStatus) => void;
 }
 
 const DEFAULT_SERVER_URL = "http://localhost:22041";
 const DEFAULT_MAX_RETRIES = 5;
 const DEFAULT_RETRY_INTERVAL = 3000;
 
-// SessionData 타입 정의
-interface SessionData {
+// ThreadData 타입 정의
+interface ThreadData {
   history: ChatItem[];
 }
 
 // localStorage 유틸리티 함수들
-const getSessionData = (): SessionData => {
+const getThreadData = (): ThreadData => {
   try {
-    const stored = localStorage.getItem("vibecraft_session");
+    const stored = localStorage.getItem("vibecraft_thread");
     return stored ? JSON.parse(stored) : { history: [] };
   } catch (error) {
-    console.error("SessionData 로드 실패:", error);
+    console.error("ThreadData 로드 실패:", error);
     return { history: [] };
   }
 };
 
-const saveSessionData = (sessionData: SessionData): void => {
+const saveThreadData = (threadData: ThreadData): void => {
   try {
-    localStorage.setItem("vibecraft_session", JSON.stringify(sessionData));
+    localStorage.setItem("vibecraft_thread", JSON.stringify(threadData));
   } catch (error) {
-    console.error("SessionData 저장 실패:", error);
+    console.error("ThreadData 저장 실패:", error);
   }
 };
 
 const getChatItems = (): ChatItem[] => {
-  return getSessionData().history;
+  return getThreadData().history;
 };
 
 const updateChatItem = (
-  sessionId: string,
+  threadId: string,
   submit: string,
-  lastMessage: string,
-  processStatus: ProcessStatus = "TOPIC",
-  topic?: string
+  processStatus: ProcessStatus = "TOPIC"
 ): void => {
-  const sessionData = getSessionData();
-  const existingIndex = sessionData.history.findIndex(
-    (item) => item.sessionId === sessionId
+  const threadData = getThreadData();
+  const existingIndex = threadData.history.findIndex(
+    (item) => item.rootThreadId === threadId
   );
 
   if (existingIndex >= 0) {
     // 기존 아이템 업데이트 - submit 값은 변경하지 않음
-    sessionData.history[existingIndex] = {
-      ...sessionData.history[existingIndex],
-      lastMessage,
+    threadData.history[existingIndex] = {
+      ...threadData.history[existingIndex],
       processStatus,
-      topic: topic || sessionData.history[existingIndex].topic,
       updatedAt: new Date().toISOString(),
     };
-    console.log("✅ 기존 ChatItem 업데이트:", sessionId);
+    console.log("✅ 기존 ChatItem 업데이트:", threadId);
   } else {
     // 새 아이템 추가 (새로운 세션인 경우에만)
-    sessionData.history.unshift({
-      sessionId,
+    // threadData.history.unshift({
+    //   rootThreadId,
+    //   submit,
+    //   processStatus,
+    //   createdAt: new Date().toISOString(),
+    //   updatedAt: new Date().toISOString(),
+    // });
+    threadData.history.unshift({
+      rootThreadId: threadId,
+      lastThreadId: threadId,
       submit,
-      lastMessage,
       processStatus,
-      topic: topic || submit, // TOPIC 단계에서는 submit을 topic으로 사용
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      steps: [],
+      process: {
+        TOPIC: [threadId],
+        DATA: [],
+        BUILD: [],
+        DEPLOY: [],
+      },
     });
-    console.log("🆕 새 ChatItem 생성:", sessionId);
+    console.log("🆕 새 ChatItem 생성:", threadId);
   }
 
-  saveSessionData(sessionData);
+  saveThreadData(threadData);
 };
 
 export const useSSE = (options: UseSSEOptions = {}): UseSSEReturn => {
   const {
     serverUrl = DEFAULT_SERVER_URL,
-    sessionId: providedSessionId,
+    threadId: providedThreadId,
     autoConnect = true,
     maxRetries = DEFAULT_MAX_RETRIES,
     retryInterval = DEFAULT_RETRY_INTERVAL,
   } = options;
 
   // 세션 ID 상태 관리
-  const [sessionId, setSessionId] = useState<string>("");
+  const [threadId, setThreadId] = useState<string>("");
 
   // 상태 관리
   const [connectionState, setConnectionState] =
     useState<SSEConnectionState>("IDLE");
-  const [sessionState, setSessionState] = useState<SessionState>("FIRST_VISIT");
+  const [threadState, setThreadState] = useState<ThreadState>("FIRST_VISIT");
   const [processStatus, setProcessStatus] = useState<ProcessStatus>("TOPIC");
   const [messages, setMessages] = useState<SSEMessage[]>([]);
   const [expectedMessages, setExpectedMessages] = useState<number>(0);
@@ -162,6 +193,11 @@ export const useSSE = (options: UseSSEOptions = {}): UseSSEReturn => {
     null
   );
   const [chatItems, setChatItems] = useState<ChatItem[]>([]);
+  const [inputType, setInputType] = useState<InputType>("TEXT");
+  const [aiResponse, setAiResponse] = useState<AIResponse>({
+    content: "",
+    isComplete: false,
+  });
 
   // 내부 상태
   const eventSourceRef = useRef<EventSource | null>(null);
@@ -183,8 +219,8 @@ export const useSSE = (options: UseSSEOptions = {}): UseSSEReturn => {
 
   // 타이핑 상태 관리
   const startTyping = useCallback(() => {
-    if (sessionState === "READY") {
-      setSessionState("TYPING");
+    if (threadState === "READY") {
+      setThreadState("TYPING");
 
       // 기존 타이머 클리어
       if (typingTimeout) {
@@ -193,22 +229,22 @@ export const useSSE = (options: UseSSEOptions = {}): UseSSEReturn => {
 
       // 3초 후 READY 상태로 복귀
       const timeout = setTimeout(() => {
-        setSessionState("READY");
+        setThreadState("READY");
       }, 3000);
 
       setTypingTimeout(timeout);
     }
-  }, [sessionState, typingTimeout]);
+  }, [threadState, typingTimeout]);
 
   const stopTyping = useCallback(() => {
-    if (sessionState === "TYPING") {
-      setSessionState("READY");
+    if (threadState === "TYPING") {
+      setThreadState("READY");
       if (typingTimeout) {
         clearTimeout(typingTimeout);
         setTypingTimeout(null);
       }
     }
-  }, [sessionState, typingTimeout]);
+  }, [threadState, typingTimeout]);
 
   // 메시지 전송 (POST 요청) - 세션이 없어도 바로 전송
   const sendMessage = useCallback(
@@ -218,7 +254,7 @@ export const useSSE = (options: UseSSEOptions = {}): UseSSEReturn => {
       try {
         const myMessage: SSEMessage = {
           messageId: `msg_${userId}_${Date.now()}`,
-          sessionId: sessionId || "",
+          threadId: threadId || "",
           content: message,
           timestamp: new Date(),
           type: "user",
@@ -227,13 +263,13 @@ export const useSSE = (options: UseSSEOptions = {}): UseSSEReturn => {
 
         // 타이핑 상태 정리 후 전송 상태로 변경
         stopTyping();
-        setSessionState("SENDING");
+        setThreadState("SENDING");
 
         // 세션이 없으면 연결 상태로 설정
-        if (!sessionId) {
+        if (!threadId) {
           console.log("🆕 새 세션으로 메시지 전송...");
-          setConnectionState("CREATING_SESSION");
-          setSessionState("CONNECTING");
+          setConnectionState("CREATING_THREAD");
+          setThreadState("CONNECTING");
         }
 
         const response = await fetch(`${serverUrl}/chat`, {
@@ -243,7 +279,7 @@ export const useSSE = (options: UseSSEOptions = {}): UseSSEReturn => {
           },
           body: JSON.stringify({
             message,
-            sessionId: sessionId || null, // 세션이 없으면 null 전송
+            threadId: threadId || null, // 세션이 없으면 null 전송
             userId,
           }),
         });
@@ -251,7 +287,7 @@ export const useSSE = (options: UseSSEOptions = {}): UseSSEReturn => {
         if (!response.ok) {
           console.error("❌ 메시지 전송 실패:", response.status);
           setConnectionState("ERROR");
-          setSessionState("ERROR");
+          setThreadState("ERROR");
           return false;
         }
 
@@ -259,10 +295,10 @@ export const useSSE = (options: UseSSEOptions = {}): UseSSEReturn => {
         console.log("✅ 서버 응답:", data);
 
         // 기존 세션에서 메시지를 보낸 경우 ChatItem 업데이트
-        if (sessionId && data.sessionId === sessionId) {
-          updateChatItem(sessionId, message, message, processStatus);
+        if (threadId && data.threadId === threadId) {
+          updateChatItem(threadId, message, processStatus);
           setChatItems(getChatItems());
-          console.log("📝 기존 세션 ChatItem 업데이트:", sessionId);
+          console.log("📝 기존 세션 ChatItem 업데이트:", threadId);
         }
 
         if (
@@ -271,9 +307,9 @@ export const useSSE = (options: UseSSEOptions = {}): UseSSEReturn => {
         ) {
         } else {
           // 서버에서 세션ID를 받은 경우 업데이트
-          if (data.sessionId && data.sessionId !== sessionId) {
-            console.log("🔄 새 세션ID 설정:", data.sessionId);
-            setSessionId(data.sessionId);
+          if (data.threadId && data.threadId !== threadId) {
+            console.log("🔄 새 세션ID 설정:", data.threadId);
+            setThreadId(data.threadId);
             setConnectionState("CONNECTING");
           }
         }
@@ -283,7 +319,7 @@ export const useSSE = (options: UseSSEOptions = {}): UseSSEReturn => {
           // 시작 메시지 추가
           const startMessage: SSEMessage = {
             messageId: data.messageId || `msg_${Date.now()}`,
-            sessionId: data.sessionId,
+            threadId: data.threadId,
             content: data.content,
             timestamp: new Date(data.timestamp || new Date().toISOString()),
             type: "server",
@@ -291,17 +327,17 @@ export const useSSE = (options: UseSSEOptions = {}): UseSSEReturn => {
 
           setMessages((prev) => [...prev, startMessage]);
           setConnectionState("CONNECTED");
-          setSessionState("RECEIVING");
+          setThreadState("RECEIVING");
           setExpectedMessages(data.totalResponses || 1);
           setReceivedSequenceCount(0);
 
           // SSE 연결 시작
-          setupEventSource(data.sessionId);
+          setupEventSource(data.threadId);
         } else if (data.content) {
           // 일반 메시지 처리
           const serverMessage: SSEMessage = {
             messageId: data.messageId || `msg_${Date.now()}`,
-            sessionId: data.sessionId,
+            threadId: data.threadId,
             content: data.content,
             timestamp: new Date(data.timestamp || new Date().toISOString()),
             type: "server",
@@ -309,29 +345,31 @@ export const useSSE = (options: UseSSEOptions = {}): UseSSEReturn => {
 
           setMessages((prev) => [...prev, serverMessage]);
           setConnectionState("CONNECTED");
-          setSessionState("READY");
+          setThreadState("READY");
         }
+
+        // TODO : Process Status 다음 step으로 변경
 
         return true;
       } catch (error) {
         console.error("❌ 메시지 전송 오류:", error);
         setConnectionState("ERROR");
-        setSessionState("ERROR");
+        setThreadState("ERROR");
         return false;
       }
     },
-    [serverUrl, sessionId]
+    [serverUrl, threadId]
   );
 
   // EventSource 설정 함수
   const setupEventSource = useCallback(
-    (sessionId: string) => {
+    (threadId: string) => {
       if (eventSourceRef.current) {
         eventSourceRef.current.close();
       }
 
-      console.log("🔌 SSE 연결 시작:", sessionId);
-      const eventSource = new EventSource(`${serverUrl}/events/${sessionId}`);
+      console.log("🔌 SSE 연결 시작:", threadId);
+      const eventSource = new EventSource(`${serverUrl}/events/${threadId}`);
       eventSourceRef.current = eventSource;
 
       eventSource.onopen = () => {
@@ -341,31 +379,100 @@ export const useSSE = (options: UseSSEOptions = {}): UseSSEReturn => {
 
       eventSource.onmessage = (event) => {
         try {
-          const data = JSON.parse(event.data);
-          console.log("📨 SSE 메시지 수신:", data);
+          // SSE 이벤트 파싱
+          const parseSSEEvent = (rawData: string) => {
+            const lines = rawData.split("\n");
+            let eventType = "";
+            let eventData = "";
 
-          if (data.type === "chat_response") {
-            // 순차 응답 메시지 처리
-            const serverMessage: SSEMessage = {
-              messageId: data.messageId,
-              sessionId: data.sessionId,
-              content: data.content,
-              timestamp: new Date(data.timestamp),
-              type: "server",
-            };
+            for (const line of lines) {
+              if (line.startsWith("event:")) {
+                eventType = line.replace("event:", "").trim();
+              } else if (line.startsWith("data:")) {
+                eventData = line.replace("data:", "").trim();
+              }
+            }
 
-            setMessages((prev) => [...prev, serverMessage]);
-            setReceivedSequenceCount(data.sequence);
+            return { event: eventType, data: eventData };
+          };
 
-            // 마지막 메시지인 경우
-            if (data.sequence === data.total) {
-              setSessionState("READY");
-              eventSource.close();
+          // 원본 이벤트 데이터 파싱
+          const { event: eventType, data: eventData } = parseSSEEvent(
+            event.data
+          );
+          console.log("📨 SSE 이벤트 수신:", { eventType, eventData });
+
+          // AI 이벤트만 처리
+          if (eventType === "ai") {
+            setAiResponse((prev) => ({
+              content: prev.content + eventData + "\n",
+              isComplete: false,
+              threadId: threadId,
+            }));
+          } else if (eventType === "complete") {
+            // AI 응답 완료 처리
+            setAiResponse((prev) => {
+              const completedResponse = {
+                ...prev,
+                isComplete: true,
+              };
+
+              // 전체 AI 응답을 메시지로 추가
+              const aiMessage: SSEMessage = {
+                messageId: `ai_response_${Date.now()}`,
+                threadId: threadId,
+                content: completedResponse.content,
+                timestamp: new Date(),
+                type: "server",
+              };
+              setMessages((prevMessages) => [...prevMessages, aiMessage]);
 
               // ChatItem 업데이트
-              updateChatItem(sessionId, data.originalMessage, data.content, processStatus);
+              updateChatItem(
+                threadId,
+                "", // originalMessage
+                processStatus
+              );
               setChatItems(getChatItems());
+
+              return completedResponse;
+            });
+
+            setThreadState("READY");
+            eventSource.close();
+          } else if (eventType === "menu") {
+            // 메뉴 이벤트는 현재 무시
+            console.log("📝 메뉴 이벤트 수신 (무시):", eventData);
+          }
+
+          // 기존 JSON 파싱 방식 유지 (하위 호환성)
+          try {
+            const data = JSON.parse(event.data);
+            if (data.type === "chat_response") {
+              // 기존 순차 응답 메시지 처리
+              const serverMessage: SSEMessage = {
+                messageId: data.messageId,
+                threadId: data.threadId,
+                content: data.content,
+                timestamp: new Date(data.timestamp),
+                type: "server",
+              };
+
+              setMessages((prev) => [...prev, serverMessage]);
+              setReceivedSequenceCount(data.sequence);
+
+              // 마지막 메시지인 경우
+              if (data.sequence === data.total) {
+                setThreadState("READY");
+                eventSource.close();
+
+                // ChatItem 업데이트
+                updateChatItem(threadId, data.originalMessage, processStatus);
+                setChatItems(getChatItems());
+              }
             }
+          } catch (jsonError) {
+            // JSON 파싱 실패는 무시 (새로운 이벤트 형식)
           }
         } catch (error) {
           console.error("❌ SSE 메시지 파싱 오류:", error);
@@ -374,7 +481,7 @@ export const useSSE = (options: UseSSEOptions = {}): UseSSEReturn => {
 
       eventSource.onerror = (error) => {
         console.error("❌ SSE 연결 오류:", error);
-        setSessionState("ERROR");
+        setThreadState("ERROR");
         eventSource.close();
       };
     },
@@ -382,69 +489,46 @@ export const useSSE = (options: UseSSEOptions = {}): UseSSEReturn => {
   );
 
   // SSE 연결 설정 - 세션 선택 시 호출
-  const connect = useCallback((newSessionId: string) => {
-    console.log("🔌 세션 연결:", newSessionId);
+  const connect = useCallback((newThreadId: string) => {
+    console.log("🔌 세션 연결:", newThreadId);
 
     // 현재 세션 ID 업데이트
-    setSessionId(newSessionId);
-    
+    setThreadId(newThreadId);
+
     // 기존 세션의 processStatus 로드
-    const sessionData = getSessionData();
-    const chatItem = sessionData.history.find(item => item.sessionId === newSessionId);
+    const threadData = getThreadData();
+    const chatItem = threadData.history.find(
+      (item) => item.rootThreadId === newThreadId
+    );
     if (chatItem) {
       setProcessStatus(chatItem.processStatus);
     }
-
-    // localStorage에서 해당 세션의 메시지 로드
     try {
-      // const storedMessages = localStorage.getItem(
-      //   `vibecraft_messages_${newSessionId}`
-      // );
-      // if (storedMessages) {
-      //   const messages = JSON.parse(storedMessages);
-      //   setMessages(
-      //     messages.map((msg: any) => ({
-      //       ...msg,
-      //       timestamp: new Date(msg.timestamp),
-      //     }))
-      //   );
-      //   console.log(
-      //     "📨 세션 메시지 로드:",
-      //     newSessionId,
-      //     messages.length,
-      //     "개"
-      //   );
-      //   setSessionState("READY");
-      // } else {
-      //   // 서버에서 채팅 기록 요청
-      //   fetchChatHistory(newSessionId);
-      // }
-
       // 서버에서 채팅 기록 요청
-      fetchChatHistory(newSessionId);
+      fetchChatHistory(newThreadId);
     } catch (error) {
       console.error("❌ 메시지 로드 실패:", error);
       setMessages([]);
-      setSessionState("ERROR");
+      setThreadState("ERROR");
     }
   }, []);
 
   // 서버에서 채팅 기록 가져오기
   const fetchChatHistory = useCallback(
-    async (sessionId: string) => {
+    async (threadId: string) => {
       try {
-        console.log("📡 서버에서 채팅 기록 요청:", sessionId);
-        setSessionState("CONNECTING");
+        console.log("📡 서버에서 채팅 기록 요청:", threadId);
+        setThreadState("CONNECTING");
 
         const response = await fetch(
-          `${serverUrl}/sessions/${sessionId}/messages`
+          `${serverUrl}/threads/${threadId}/messages`
         );
         if (response.ok) {
           const data = await response.json();
           if (data.messages && Array.isArray(data.messages)) {
             const serverMessages = data.messages.map((msg: any) => ({
               messageId: msg.messageId || `msg_${Date.now()}`,
-              sessionId: sessionId,
+              threadId: threadId,
               content: msg.content,
               timestamp: new Date(msg.timestamp),
               type: msg.type || "server",
@@ -456,21 +540,20 @@ export const useSSE = (options: UseSSEOptions = {}): UseSSEReturn => {
               "개"
             );
           }
-          setSessionState("READY");
+          setThreadState("READY");
         } else {
-          console.warn("⚠️ 서버에 채팅 기록이 없습니다:", sessionId);
+          console.warn("⚠️ 서버에 채팅 기록이 없습니다:", threadId);
           setMessages([]);
-          setSessionState("READY");
+          setThreadState("READY");
         }
       } catch (error) {
         console.error("❌ 채팅 기록 요청 실패:", error);
         setMessages([]);
-        setSessionState("ERROR");
+        setThreadState("ERROR");
       }
     },
     [serverUrl]
   );
-
   // 연결 해제
   const disconnect = useCallback(() => {
     console.log("🔌 SSE 연결 해제");
@@ -489,6 +572,11 @@ export const useSSE = (options: UseSSEOptions = {}): UseSSEReturn => {
     retryCountRef.current = 0;
   }, []);
 
+  // 프로세스 상태값 변경 및 process tree node update
+  const fetchProcess = useCallback((status: ProcessStatus) => {
+    setProcessStatus(status);
+  }, []);
+
   // 초기 로드 시 ChatItems 불러오기
   useEffect(() => {
     setChatItems(getChatItems());
@@ -498,35 +586,35 @@ export const useSSE = (options: UseSSEOptions = {}): UseSSEReturn => {
   useEffect(() => {
     // autoConnect가 false이거나 세션 ID가 없으면 자동 생성하지 않음
     // sendMessage 호출 시에 자동으로 세션이 생성됨
-    if (providedSessionId) {
-      setSessionId(providedSessionId);
+    if (providedThreadId) {
+      setThreadId(providedThreadId);
     }
     // localStorage에서 세션 데이터 복구
     else {
       try {
-        const sessionData = getSessionData();
-        const chatItems = sessionData.history;
+        const threadData = getThreadData();
+        const chatItems = threadData.history;
 
         if (chatItems.length > 0) {
           // 가장 최근 세션으로 자동 연결
-          const latestSession = chatItems[0];
-          setSessionId(latestSession.sessionId);
-          setProcessStatus(latestSession.processStatus);
-          setSessionState("READY");
-          console.log("🔄 최근 세션 복구:", latestSession.sessionId);
+          const latestThread = chatItems[0];
+          setThreadId(latestThread.rootThreadId);
+          setProcessStatus(latestThread.processStatus);
+          setThreadState("READY");
+          console.log("🔄 최근 세션 복구:", latestThread.rootThreadId);
 
           // 서버에서 채팅 기록 요청
-          fetchChatHistory(latestSession.sessionId);
+          fetchChatHistory(latestThread.rootThreadId);
         } else {
           // 채팅 기록이 없으면 FIRST_VISIT
-          setSessionState("FIRST_VISIT");
+          setThreadState("FIRST_VISIT");
         }
       } catch (error) {
         console.error("❌ 세션 복구 실패:", error);
-        setSessionState("FIRST_VISIT");
+        setThreadState("FIRST_VISIT");
       }
     }
-  }, [providedSessionId]);
+  }, [providedThreadId]);
 
   // 컴포넌트 언마운트 시 정리
   useEffect(() => {
@@ -553,9 +641,10 @@ export const useSSE = (options: UseSSEOptions = {}): UseSSEReturn => {
     }
 
     // 상태 초기화 - 채팅 기록이 있으므로 IDLE 상태
-    setSessionId("");
+    setThreadId("");
     setMessages([]);
-    setSessionState("IDLE");
+    setAiResponse({ content: "", isComplete: false });
+    setThreadState("IDLE");
     setConnectionState("IDLE");
     setProcessStatus("TOPIC"); // 새 채팅은 항상 TOPIC부터 시작
 
@@ -564,10 +653,12 @@ export const useSSE = (options: UseSSEOptions = {}): UseSSEReturn => {
 
   return {
     connectionState,
-    sessionState,
+    threadState,
     processStatus,
-    sessionId,
+    inputType,
+    threadId,
     messages,
+    aiResponse,
     isConnected,
     chatItems,
     addMessage,
@@ -579,5 +670,6 @@ export const useSSE = (options: UseSSEOptions = {}): UseSSEReturn => {
     stopTyping,
     startNewChat,
     getChatItems: () => getChatItems(),
+    fetchProcess,
   };
 };

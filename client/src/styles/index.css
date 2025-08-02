@@ -67,15 +67,15 @@
     transition: width 0.3s ease-in-out;
   }
   
-  .chat-session-item {
+  .chat-thread-item {
     transition: all 0.2s ease-in-out;
   }
   
-  .chat-session-item:hover {
+  .chat-thread-item:hover {
     transform: translateX(2px);
   }
   
-  .chat-session-active {
+  .chat-thread-active {
     background: linear-gradient(90deg, rgb(239 246 255) 0%, rgb(219 234 254) 100%);
   }
 
