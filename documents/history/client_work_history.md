@@ -157,24 +157,23 @@ client/src/
 - 상수 정의 및 유틸리티 타입
 - 에러 처리 타입 체계
 
-#### 2. WebSocket 훅 구현 (`client/src/hooks/useWebSocket.ts`)
+#### 2. SSE 훅 구현 (`client/src/hooks/useSSE.ts`)
 ```typescript
-export const useWebSocket = (options: UseWebSocketOptions): UseWebSocketReturn
+export const useSSE = (options: UseSSEOptions): UseSSEReturn
 ```
 
 **주요 기능**:
 - **자동 재연결**: 최대 5회, 3초 간격
 - **하트비트**: 30초 간격 Ping/Pong
-- **메시지 큐잉**: 연결 끊김 시 메시지 대기열
+- **단방향 통신**: 서버에서 클라이언트로만 데이터 전송
 - **에러 복구**: 다단계 에러 처리 메커니즘
 - **상태 관리**: DISCONNECTED, CONNECTING, CONNECTED, RECONNECTING, ERROR
 
 **구현된 메서드**:
-- `connect()`, `disconnect()`: 연결 관리
-- `sendMessage()`: 일반 메시지 전송
-- `joinChat()`: 채팅 세션 참여
-- `sendChatMessage()`: 채팅 메시지 전송
-- `leaveChat()`: 채팅 나가기
+- `connect()`, `disconnect()`: SSE 연결 관리
+- `joinChat()`: 채팅 세션 참여 (POST 요청)
+- `sendChatMessage()`: 채팅 메시지 전송 (POST 요청)
+- `leaveChat()`: 채팅 나가기 (POST 요청)
 
 #### 3. 메시지 컴포넌트 구현
 

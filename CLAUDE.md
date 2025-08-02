@@ -34,14 +34,14 @@ VibeCraft/
 2. **Database Creation** - Generate databases based on collected data
 3. **Frontend Development** - Create user-friendly web frontend for data visualization and customization
 4. **Git Workflow Automation** - Automate git workflows using LLM
-5. **Vercel Auto-deployment** - Automatic deployment after git push
+5. **On-premises Deployment** - Local server environment deployment
 6. **User Verification** (Optional) - User verification of completed pages
 
 ## Technology Stack
 
 - **LLM**: Gemini, Claude, others as needed
 - **Frontend**: React, Next.js (subject to change based on requirements)
-- **Deployment**: Vercel
+- **Deployment**: On-premises (Local server)
 - **Version Control**: Git, GitHub
 - **Data Sources**: CSV, JSON, API, databases via MCP
 

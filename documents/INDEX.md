@@ -20,7 +20,7 @@ VibeCraft는 자연어 프롬프트를 통해 10분 내에 맞춤형 통계 및 
 ### 🛠 기술 문서 (`technical/`)
 - **[mcp_system_guide.md](./technical/mcp_system_guide.md)** - MCP 시스템 기술 가이드
   - 시스템 아키텍처 및 구현 방법
-  - WebSocket 통신 프로토콜
+  - SSE (Server-Sent Events) 통신 프로토콜
   - 파일 구조 및 실행 가이드
 - **[project_structure.md](./technical/project_structure.md)** - 프로젝트 구조 명세서
 
@@ -63,14 +63,14 @@ http://localhost:5173/chat
 
 ### ✅ 구현 완료
 - **반응형 웹 애플리케이션**: TailwindCSS + Ant Design
-- **실시간 채팅 시스템**: WebSocket 기반 MCP 통신
+- **실시간 채팅 시스템**: SSE 기반 MCP 통신
 - **세션 관리**: 독립적인 채팅 세션별 MCP 클라이언트
 - **자동 재연결**: 연결 끊김 시 자동 복구
 - **사이드바**: 세션 기반 채팅 로그 관리
 
 ### 🔄 진행 중
 - 데이터 시각화 대시보드 개발
-- Vercel 자동 배포 설정
+- 온프레미스 배포 환경 최적화
 
 ---
 
@@ -102,8 +102,8 @@ documents/
 ## 🔗 관련 링크
 
 - **Repository**: [VibeCraft GitHub](https://github.com/your-username/vibecraft)
-- **Deployment**: Vercel (자동 배포)
-- **Technology Stack**: React 18 + TypeScript + Node.js + WebSocket
+- **Deployment**: 온프레미스 (로컬 서버)
+- **Technology Stack**: React 18 + TypeScript + Node.js + SSE
 
 ---
 

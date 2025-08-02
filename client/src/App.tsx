@@ -1,26 +1,14 @@
-import { Routes, Route } from 'react-router-dom'
-import Layout from './components/Layout'
-import MainPage from './pages/MainPage'
-import CraftPage from './pages/CraftPage'
-import ChatPage from './pages/ChatPage'
+import Layout from "./components/Layout";
+import Main from "./pages/Main";
 
 function App() {
   return (
     <div className="App">
-      <Routes>
-        <Route path="/" element={<MainPage />} />
-        <Route 
-          path="/craft" 
-          element={
-            <Layout showSidebar={true}>
-              <CraftPage />
-            </Layout>
-          } 
-        />
-        <Route path="/chat" element={<ChatPage />} />
-      </Routes>
+      <Layout showSidebar={true}>
+        <Main />
+      </Layout>
     </div>
-  )
+  );
 }
 
-export default App
+export default App;

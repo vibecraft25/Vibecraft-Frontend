@@ -18,15 +18,15 @@ LLM과 MCP(Model Context Protocol) 기반으로 자연어 프롬프트만으로 
 - **UI Framework**: Ant Design + Tailwind CSS
 - **Visualization**: Recharts + React Leaflet
 - **Routing**: React Router
-- **Real-time**: Socket.IO Client
+- **Real-time**: SSE Client
 
 ### Backend
 
 - **Node.js** + TypeScript + Express
-- **WebSocket**: ws 라이브러리 (포트 8080)
+- **SSE**: Server-Sent Events (포트 8080)
 - **Session Management**: 채팅 세션별 독립적인 MCP 클라이언트 관리
 - **Process Management**: child_process로 Python MCP 클라이언트 관리
-- **Real-time Communication**: 양방향 실시간 통신 및 자동 재연결
+- **Real-time Communication**: 단방향 실시간 통신 및 자동 재연결
 
 ### Python MCP Client
 
@@ -88,7 +88,7 @@ VibeCraft/
 │   │   │   ├── MessageInput.tsx  # 메시지 입력 컴포넌트
 │   │   │   └── MessageItem.tsx   # 개별 메시지 아이템
 │   │   ├── hooks/           # 커스텀 React 훅
-│   │   │   └── useWebSocket.ts # WebSocket 클라이언트 훅
+│   │   │   └── useSSE.ts       # SSE 클라이언트 훅
 │   │   ├── pages/           # 페이지 컴포넌트
 │   │   │   ├── MainPage.tsx    # 랜딩 페이지
 │   │   │   ├── CraftPage.tsx   # 워크플로우 페이지
@@ -132,7 +132,7 @@ VibeCraft/
 ### 3. MCP 채팅 페이지 (`/chat`)
 
 - 독립적인 채팅 세션별 MCP 클라이언트 관리
-- WebSocket 기반 실시간 양방향 통신
+- SSE 기반 실시간 단방향 통신
 - 자동 재연결 및 세션 관리
 - 반응형 채팅 UI 및 사이드바 세션 관리
 
@@ -166,7 +166,7 @@ python pmc_client.py  # 직접 실행 (테스트용)
 ## 🌐 시스템 아키텍처
 
 ```
-웹 클라이언트 <--WebSocket--> Node.js 서버 <--stdin/stdout--> Python MCP Client
+웹 클라이언트 <--SSE--> Node.js 서버 <--stdin/stdout--> Python MCP Client
                                                                       ↓
                                                                MCP Servers
                                                             (DB, Git, File 등)
@@ -174,7 +174,7 @@ python pmc_client.py  # 직접 실행 (테스트용)
 
 ### 통신 프로토콜
 
-- **Frontend ↔ Backend**: WebSocket (ws 라이브러리)
+- **Frontend ← Backend**: SSE (Server-Sent Events)
 - **Backend ↔ MCP**: stdin/stdout
 - **MCP ↔ MCP Servers**: MCP Protocol
 
@@ -194,8 +194,8 @@ python pmc_client.py  # 직접 실행 (테스트용)
 
 ## 🚀 배포
 
-- **플랫폼**: Vercel (권장)
-- **자동 배포**: GitHub 연동 시 자동 배포
+- **플랫폼**: 온프레미스 환경 (로컬 서버)
+- **실행 방법**: 서버/클라이언트 독립 실행
 - **환경 변수**: LLM API 키 및 MCP 설정
 
 ## 🤝 기여하기

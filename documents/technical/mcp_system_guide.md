@@ -7,7 +7,7 @@ Python MCP Client(PMC)와 웹페이지 간 실시간 대화 시스템 구현 가
 ### 시스템 아키텍처
 
 ```
-웹 클라이언트 <--WebSocket--> Node.js 서버 <--stdin/stdout--> Python MCP Client
+웹 클라이언트 <--SSE--> Node.js 서버 <--stdin/stdout--> Python MCP Client
                                                                       ↓
                                                                MCP Servers
                                                             (DB, Git, File 등)
@@ -17,14 +17,14 @@ Python MCP Client(PMC)와 웹페이지 간 실시간 대화 시스템 구현 가
 
 ### 프론트엔드
 - **필수**: React 18+ with TypeScript + Vite
-- **통신**: WebSocket Client
+- **통신**: SSE Client
 - **UI**: Ant Design + TailwindCSS
 - **상태관리**: React Hooks
 - **아이콘**: Lucide React
 
 ### 백엔드
 - **서버**: Node.js 18+ with TypeScript + Express
-- **통신**: WebSocket Server (ws 라이브러리)
+- **통신**: SSE Server (Server-Sent Events)
 - **프로세스**: child_process.spawn()
 - **스트림**: stdin/stdout 처리
 
@@ -40,18 +40,18 @@ const process = spawn('python', [this.pythonScriptPath], {
 });
 ```
 
-### 2. WebSocket 이벤트 정의
+### 2. SSE 이벤트 정의
 
 | 이벤트 | 방향 | 설명 |
 |--------|------|------|
-| `join_chat` | Client → Server | 채팅 세션 참여 |
-| `chat_message` | Client → Server | 메시지 전송 |
-| `leave_chat` | Client → Server | 채팅 나가기 |
-| `joined` | Server → Client | 참여 완료 |
-| `chat_response` | Server → Client | AI 응답 수신 |
-| `left` | Server → Client | 나가기 완료 |
-| `error` | Server → Client | 오류 발생 |
-| `session_created` | Server → Client | 새 세션 생성 |
+| `join_chat` | Client → Server | 채팅 세션 참여 (POST) |
+| `chat_message` | Client → Server | 메시지 전송 (POST) |
+| `leave_chat` | Client → Server | 채팅 나가기 (POST) |
+| `joined` | Server → Client | 참여 완료 (SSE) |
+| `chat_response` | Server → Client | AI 응답 수신 (SSE) |
+| `left` | Server → Client | 나가기 완료 (SSE) |
+| `error` | Server → Client | 오류 발생 (SSE) |
+| `session_created` | Server → Client | 새 세션 생성 (SSE) |
 
 ### 3. 상태 관리
 
@@ -121,7 +121,7 @@ client/src/
 │   ├── Layout.tsx           # 메인 레이아웃
 │   └── Sidebar.tsx          # 세션 사이드바
 ├── hooks/
-│   └── useWebSocket.ts       # WebSocket 훅
+│   └── useSSE.ts            # SSE 훅
 ├── pages/
 │   └── ChatPage.tsx          # 채팅 페이지
 ├── types/
@@ -134,7 +134,7 @@ client/src/
 
 ### 안정성
 - ✅ MCP 프로세스 재시작 메커니즘
-- ✅ WebSocket 재연결 처리 (최대 5회, 3초 간격)
+- ✅ SSE 재연결 처리 (최대 5회, 3초 간격)
 - ✅ 오류 상황 복구 (다단계 에러 처리)
 
 ### 성능
@@ -166,7 +166,7 @@ http://localhost:5173/chat
 ```
 
 ### API 엔드포인트
-- **WebSocket**: `ws://localhost:8080/ws`
+- **SSE**: `http://localhost:8080/events`
 - **헬스체크**: `http://localhost:8080/health`
 - **세션 통계**: `http://localhost:8080/sessions`
 - **연결 상태**: `http://localhost:8080/connections`

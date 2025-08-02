@@ -16,6 +16,7 @@ LLM과 MCP(Model Context Protocol) 기반으로 자연어 프롬프트만으로 
 - **UI Framework**: Ant Design + Tailwind CSS
 - **Visualization**: Recharts + React Leaflet
 - **Routing**: React Router
+- **Real-time**: SSE (Server-Sent Events)
 - **Animation**: FullPage.js
 
 ## 📦 설치 및 실행
@@ -36,7 +37,7 @@ npm install
 # 개발 서버 시작
 npm run dev
 
-# 브라우저에서 http://localhost:5173 접속
+# 브라우저에서 http://localhost:22042 접속
 ```
 
 ### 빌드

@@ -30,8 +30,8 @@
 4. **Git Workflow 자동화**
    - LLM을 활용한 git workflow 자동화
 
-5. **Vercel 자동 배포**
-   - git 소스 push 이후 Vercel 자동화
+5. **온프레미스 배포**
+   - 로컬 서버 환경에서 직접 실행
 
 6. **(선택) 사용자 완성 페이지 확인 기능**
 
@@ -42,8 +42,8 @@
 - **프론트엔드**: React 18 + TypeScript + Vite
 - **UI 라이브러리**: Ant Design + TailwindCSS
 - **백엔드**: Node.js + TypeScript + Express
-- **실시간 통신**: WebSocket (ws 라이브러리)
-- **배포**: Vercel
+- **실시간 통신**: SSE (Server-Sent Events)
+- **배포**: 온프레미스 (로컬 서버)
 - **버전 관리**: Git, GitHub
 
 ### 4. 샘플 데이터 관리
@@ -64,8 +64,8 @@ sudo npm install -g @anthropic-ai/claude-code
 ```
 
 **현재 구현된 기능**:
-1. **WebSocket Hook** (`client/src/hooks/useWebSocket.ts`):
-   - WebSocket 클라이언트 연결 관리
+1. **SSE Hook** (`client/src/hooks/useSSE.ts`):
+   - SSE 클라이언트 연결 관리
    - 자동 재연결 및 상태 관리 (DISCONNECTED, CONNECTING, CONNECTED, RECONNECTING, ERROR)
    - 메시지 송수신 처리
 
@@ -76,7 +76,7 @@ sudo npm install -g @anthropic-ai/claude-code
    - `MessageItem.tsx`: 개별 메시지 아이템
 
 3. **서버 시스템**:
-   - WebSocket 서버 (포트 8080)
+   - SSE 서버 (포트 8080)
    - 채팅 세션별 독립적인 MCP 클라이언트 관리
    - LangChain 메모리 통합
 

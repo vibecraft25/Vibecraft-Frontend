@@ -30,7 +30,7 @@ VibeCraft/
 
 **Chat Page (`/chat`)**: ✨ **새로 추가**
 - Real-time MCP communication interface
-- WebSocket-based bidirectional communication
+- SSE-based unidirectional communication
 - Session-based independent MCP client management
 - Responsive chat UI with message management
 
@@ -64,7 +64,7 @@ src/
 - **UI Library**: Ant Design + TailwindCSS
 - **Design Reference**: make.com style
 - **Routing**: React Router
-- **Real-time**: WebSocket (ws library)
+- **Real-time**: SSE (Server-Sent Events)
 - **State Management**: React Hooks
 - **Icons**: Lucide React
 
@@ -73,10 +73,10 @@ src/
 ### 아키텍처 패턴
 
 ```
-WebSocket Server (포트 8080)
+SSE Server (포트 8080)
 ├── Session Manager: 채팅 세션별 독립적 관리
 ├── MCP Client Manager: Python 프로세스 관리
-└── Real-time Communication: 양방향 WebSocket 통신
+└── Real-time Communication: 단방향 SSE 통신
 ```
 
 ### 파일 구조
@@ -93,10 +93,10 @@ server/
 
 ### 핵심 기능
 
-**WebSocket Server**:
-- Express + WebSocket integration
+**SSE Server**:
+- Express + SSE integration
 - Connection pooling and rate limiting (30 msg/min)
-- Session mapping and broadcasting
+- Session mapping and event streaming
 - Automatic reconnection handling
 
 **Session Manager**:
@@ -116,7 +116,7 @@ server/
 - `GET /health`: Server status and statistics
 - `GET /sessions`: Session statistics
 - `GET /connections`: Connection status
-- `WebSocket /ws`: Real-time communication
+- `GET /events`: SSE stream endpoint
 
 ## 3. 통신 프로토콜
 
