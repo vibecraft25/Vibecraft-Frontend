@@ -148,7 +148,7 @@ const Main = () => {
           case "1":
             addMessage(selectedOption.label, "human");
             setNextProcessStatus();
-            addMessage("데이터 수집단계로 이동합니다.", "ai");
+            // addMessage("데이터 수집단계로 이동합니다.", "ai");
             addMessage("", "ai", "DATA_UPLOAD");
             break;
 
@@ -187,47 +187,21 @@ const Main = () => {
     [inputType, processStatus, threadState, handleSendMessage]
   );
 
-  // Main에서 messages 디버깅
-  useEffect(() => {
-    console.log("📨 Main.tsx messages 업데이트:", {
-      length: messages.length,
-      channelId,
-      timestamp: new Date().toISOString(),
-      messages: messages.map(m => ({ 
-        content: typeof m.content === 'string' ? m.content.slice(0, 50) : 'array', 
-        type: m.type,
-        messageId: m.messageId 
-      }))
-    });
-  }, [messages, channelId]);
-
   // ChatView Props를 메모이제이션
   const chatViewProps = useMemo(
-    () => {
-      const props = {
-        messages,
-        isLoading: threadState === "SENDING" || threadState === "RECEIVING",
-        channelId, // ChatView에서 channelId prop으로 받음
-        threadState,
-        processStatus,
-        selectedStatus: selectedProcessStatus,
-        maxReachedStatus,
-        fetchProcess: handleFetchProcess,
-        onMenuOptionSelect: handleMenuOptionSelect,
-        className: "h-full",
-        maxHeight: "100%",
-      };
-      
-      console.log("📦 Main.tsx chatViewProps 생성:", {
-        messagesLength: props.messages.length,
-        channelId: props.channelId,
-        threadState: props.threadState,
-        isLoading: props.isLoading,
-        timestamp: new Date().toISOString()
-      });
-      
-      return props;
-    },
+    () => ({
+      messages,
+      isLoading: threadState === "SENDING" || threadState === "RECEIVING",
+      channelId, // ChatView에서 channelId prop으로 받음
+      threadState,
+      processStatus,
+      selectedStatus: selectedProcessStatus,
+      maxReachedStatus,
+      fetchProcess: handleFetchProcess,
+      onMenuOptionSelect: handleMenuOptionSelect,
+      className: "h-full",
+      maxHeight: "100%",
+    }),
     [
       messages,
       threadState,
@@ -239,34 +213,6 @@ const Main = () => {
       handleMenuOptionSelect,
     ]
   );
-
-  // 초기 로드 시에만 useSSE에서 설정된 threadId를 currentThreadId에 동기화
-  useEffect(() => {
-    if (!initializedRef.current && isInitialLoad) {
-      console.log("🔄 초기 로드 처리:", { channelId, isNewChatMode });
-      if (channelId && !isNewChatMode) {
-        console.log("🔄 초기 로드 시 threadId 동기화:", channelId);
-        setCurrentThreadId(channelId);
-      }
-      setIsInitialLoad(false); // threadId 유무와 관계없이 초기 로드 완료 처리
-      initializedRef.current = true; // 초기화 완료 마킹
-    }
-  }, [isInitialLoad, channelId, isNewChatMode]);
-
-  // threadId가 빈값이 되면 currentThreadId도 초기화 (새 채팅 시작 시에만)
-  useEffect(() => {
-    // 새 채팅 모드에서만 currentThreadId 초기화 (세션 선택 시에는 실행 안함)
-    // 초기화가 완료된 후에만 실행
-    if (
-      initializedRef.current &&
-      channelId === "" &&
-      currentThreadId !== undefined &&
-      isNewChatMode
-    ) {
-      console.log("🔄 새 채팅 시작으로 currentThreadId 초기화");
-      setCurrentThreadId(undefined);
-    }
-  }, [channelId, isNewChatMode]); // currentThreadId 제거하여 무한 루프 방지
 
   return (
     <Layout showSidebar={true} sidebarProps={sidebarProps}>
@@ -307,62 +253,66 @@ const Main = () => {
         {/* 메인 컨텐츠 */}
         <div className="flex-1 flex relative min-h-0">
           <div className="w-full h-full border-r border-gray-200">
-            {threadState === "FIRST_VISIT" ? (
+            {/* {threadState === "FIRST_VISIT" ? (
               <div className="w-full overflow-hidden h-screen">
                 <Intro />
               </div>
             ) : (
-              <div className="flex h-full p-6">
-                <div className="flex-1 overflow-hidden">
-                  {threadState === "ERROR" ? (
-                    <div className="flex items-center justify-center h-full">
-                      <div className="text-center">
-                        <div className="text-red-500 mb-4">
-                          <svg
-                            className="w-12 h-12 mx-auto"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"
-                            />
-                          </svg>
-                        </div>
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">
-                          연결 오류
-                        </h3>
-                        <p className="text-gray-600 mb-4">
-                          서버와의 연결에 문제가 발생했습니다.
-                        </p>
-                        <Button
-                          type="primary"
-                          onClick={() => window.location.reload()}
-                          className="bg-blue-500 hover:bg-blue-600"
+              
+            )} */}
+            <div className="flex h-full p-6">
+              <div className="flex-1 overflow-hidden">
+                {threadState === "ERROR" ? (
+                  <div className="flex items-center justify-center h-full">
+                    <div className="text-center">
+                      <div className="text-red-500 mb-4">
+                        <svg
+                          className="w-12 h-12 mx-auto"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
                         >
-                          페이지 새로고침
-                        </Button>
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"
+                          />
+                        </svg>
                       </div>
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">
+                        연결 오류
+                      </h3>
+                      <p className="text-gray-600 mb-4">
+                        서버와의 연결에 문제가 발생했습니다.
+                      </p>
+                      <Button
+                        type="primary"
+                        onClick={() => window.location.reload()}
+                        className="bg-blue-500 hover:bg-blue-600"
+                      >
+                        페이지 새로고침
+                      </Button>
                     </div>
-                  ) : threadState === "CONNECTING" ? (
-                    <div className="flex items-center justify-center h-full">
-                      <div className="text-center">
-                        <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">
-                          서버 연결 중
-                        </h3>
-                        <p className="text-gray-600">잠시만 기다려주세요...</p>
-                      </div>
+                  </div>
+                ) : threadState === "CONNECTING" ? (
+                  <div className="flex items-center justify-center h-full">
+                    <div className="text-center">
+                      <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">
+                        서버 연결 중
+                      </h3>
+                      <p className="text-gray-600">잠시만 기다려주세요...</p>
                     </div>
-                  ) : (
-                    <ChatView key={`chatview-${channelId}-${messages.length}`} {...chatViewProps} />
-                  )}
-                </div>
+                  </div>
+                ) : (
+                  <ChatView
+                    key={`chatview-${channelId}-${messages.length}`}
+                    {...chatViewProps}
+                  />
+                )}
               </div>
-            )}
+            </div>
           </div>
 
           {/* Fixed Prompt Box - 메인 컨텐츠 영역 내부에 absolute 배치 */}

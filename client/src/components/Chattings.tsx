@@ -68,10 +68,10 @@ const Chattings = ({
             {chatItems.map((item) => (
               <div
                 key={item.rootThreadId}
-                className={`cursor-pointer transition-all duration-200 rounded-lg mx-3 px-3 py-3 group hover:bg-gray-50 ${
+                className={`cursor-pointer transition-all duration-200 rounded-lg mx-3 px-3 py-3 group hover:bg-gray-100 ${
                   item.rootThreadId === channelId
                     ? "bg-gradient-to-r from-purple-50 to-blue-50 border-l-3 border-purple-500"
-                    : "hover:bg-gray-50"
+                    : "border border-gray-100 bg-gray-50"
                 }`}
                 onClick={() => {
                   console.log("📱 채팅 항목 클릭:", item.rootThreadId);

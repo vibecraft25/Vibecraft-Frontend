@@ -146,6 +146,7 @@ export const useSSE = (config: UseSSEConfig): UseSSEReturn => {
 
   const switchChannel = useCallback(
     (threadId: string) => {
+      setThreadState("IDLE");
       setChannelId(threadId);
       switchCurrentChannel(threadId);
     },
@@ -214,6 +215,7 @@ export const useSSE = (config: UseSSEConfig): UseSSEReturn => {
 
           // 새 채널로 전환 (비동기)
           switchChannel(rootThreadId);
+          setCurrentThreadId(rootThreadId);
 
           // 주제 설정 시엔 모든 메시지의 threadId를 rootThreadId로 업데이트
           setMessageBuffer((prev) => [
@@ -263,6 +265,20 @@ export const useSSE = (config: UseSSEConfig): UseSSEReturn => {
     ]
   );
 
+  const getAdditionParams = useCallback(():
+    | Record<string, string>
+    | undefined => {
+    switch (processStatus) {
+      case "TOPIC":
+        break;
+      case "DATA":
+        debugger;
+        return currentThreadId ? { thread_id: currentThreadId } : undefined;
+      default:
+        return {};
+    }
+  }, [processStatus, currentThreadId]);
+
   // 메시지 전송
   const sendMessage = useCallback(
     async (message: string): Promise<boolean> => {
@@ -285,7 +301,8 @@ export const useSSE = (config: UseSSEConfig): UseSSEReturn => {
         const response = await getApiResponse(
           message,
           serverUrl,
-          API_ENDPOINTS[processStatus]
+          API_ENDPOINTS[processStatus],
+          getAdditionParams()
         );
 
         if (!response.body) {
@@ -366,7 +383,7 @@ export const useSSE = (config: UseSSEConfig): UseSSEReturn => {
       await saveCurrentMessages(messageBuffer);
     }
 
-    await storeStartNewChat();
+    storeStartNewChat();
     setChannelId(undefined);
     setCurrentThreadId(undefined);
     setMessageBuffer([]); // 메시지 버퍼 초기화
@@ -487,7 +504,7 @@ export const useSSE = (config: UseSSEConfig): UseSSEReturn => {
     };
 
     // 자동저장 시작
-    startAutoSave();
+    // startAutoSave();
 
     // 이벤트 리스너 등록
     document.addEventListener("visibilitychange", handleVisibilityChange);

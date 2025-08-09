@@ -25,46 +25,32 @@ interface ChatViewProps {
   maxHeight?: string;
 }
 
-const ChatView = (props: ChatViewProps) => {
-  const {
-    messages,
-    isLoading = false,
-    channelId,
-    threadState,
-    processStatus,
-    selectedStatus,
-    maxReachedStatus,
-    fetchProcess,
-    onMenuOptionSelect,
-    className = "",
-    maxHeight = "400px",
-  } = props;
-  
+const ChatView = ({
+  messages,
+  isLoading = false,
+  channelId,
+  threadState,
+  processStatus,
+  selectedStatus,
+  maxReachedStatus,
+  fetchProcess,
+  onMenuOptionSelect,
+  className = "",
+  maxHeight = "400px",
+}: ChatViewProps) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  // Props 전체 디버깅 - 컴포넌트가 렌더링될 때마다 실행
-  console.log("🎯 ChatView 렌더링:", {
-    propsKeys: Object.keys(props),
-    messagesLength: messages?.length || 0,
-    messagesIsArray: Array.isArray(messages),
-    channelId,
-    isLoading,
-    threadState,
-    timestamp: new Date().toISOString(),
-    firstMessage: messages?.[0]?.content?.slice(0, 30) || 'none'
-  });
 
   // 메시지 업데이트 디버깅
   useEffect(() => {
-    console.log("🔄 ChatView messages useEffect:", {
-      length: messages?.length || 0,
+    console.log("🔄 ChatView messages 업데이트:", {
+      length: messages.length,
       channelId,
       timestamp: new Date().toISOString(),
-      messages: messages?.map?.((m) => ({
+      messages: messages.map((m) => ({
         content:
           typeof m.content === "string" ? m.content.slice(0, 50) : "array",
         type: m.type,
-      })) || []
+      })),
     });
   }, [messages, channelId]);
 
