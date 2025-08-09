@@ -11,18 +11,13 @@ interface PromptBoxProps {
   sendMessage: (message: string, userId?: string) => Promise<boolean>;
   placeholder?: string;
   disabled?: boolean;
-  onTyping?: () => void;
-  onStopTyping?: () => void;
 }
 
 const PromptBox = ({
   connectionState,
-  inputType,
   processStatus,
   sendMessage,
   disabled = false,
-  onTyping,
-  onStopTyping,
 }: PromptBoxProps) => {
   const [inputText, setInputText] = useState("");
 
@@ -36,9 +31,6 @@ const PromptBox = ({
   const handleSubmit = async () => {
     const message = inputText.trim();
     if (!message || disabled || isLoading) return;
-
-    // 타이핑 상태 정리
-    onStopTyping?.();
 
     // 입력창 즉시 클리어
     setInputText("");
@@ -89,15 +81,6 @@ const PromptBox = ({
           <div className="flex-1">
             <Input.TextArea
               value={inputText}
-              onChange={(e) => {
-                setInputText(e.target.value);
-                // 입력 시작 시 타이핑 상태 활성화
-                if (e.target.value.length > 0 && !disabled) {
-                  onTyping?.();
-                }
-              }}
-              onKeyDown={handleKeyPress}
-              onBlur={() => onStopTyping?.()}
               placeholder={getPlaceholderTextForInput()}
               disabled={isInputDisabled}
               autoSize={{ minRows: 1, maxRows: 4 }}
@@ -107,6 +90,10 @@ const PromptBox = ({
                 fontSize: "16px",
                 lineHeight: "1.5",
               }}
+              onChange={(e) => {
+                setInputText(e.target.value);
+              }}
+              onKeyDown={handleKeyPress}
             />
           </div>
           <div className="flex-shrink-0">

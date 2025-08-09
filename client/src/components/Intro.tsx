@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Typography, Card } from "antd";
-import { getGuidesections } from "../utils/MainGuide";
+import { getGuidesections } from "./MainGuide";
 
 const { Title, Paragraph } = Typography;
 

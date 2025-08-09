@@ -1,18 +1,43 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Button } from "antd";
 import { Database } from "lucide-react";
 
 import { useSSE } from "../hooks/useSSE";
+import { useChatStore } from "@/stores/chatStore";
 
 import Intro from "../components/Intro";
 import PromptBox from "../components/PromptBox";
-import ChatView from "../components/ChatView";
+import ChatView from "../components/chat/ChatView";
 import Layout from "../components/Layout";
 import { PromptBoxThreadMessage } from "@/message/prompt";
+import { ProcessStatus } from "@/types/session";
+import { PROCESS_STATUS_ORDER } from "@/utils/processStatus";
+import { MenuOption } from "@/components/chat/Menu";
 
 const Main = () => {
   const [currentThreadId, setCurrentThreadId] = useState<string>();
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [isNewChatMode, setIsNewChatMode] = useState(false);
+  const [selectedProcessStatus, setSelectedProcessStatus] =
+    useState<ProcessStatus>();
+
+  // 초기화 추적을 위한 ref
+  const initializedRef = useRef(false);
+
+  // Zustand store에서 chatItems 가져오기 - selector 패턴으로 안정적 참조
+  const chatItems = useChatStore((state) => state.chatItems);
+
+  // chatItems 로드 상태 디버깅
+  useEffect(() => {
+    console.log("📋 Main.tsx chatItems 상태:", {
+      length: chatItems.length,
+      items: chatItems.map((item) => ({
+        id: item.rootThreadId,
+        submit: item.submit,
+      })),
+    });
+  }, [chatItems]);
 
   const {
     threadState,
@@ -20,50 +45,217 @@ const Main = () => {
     inputType,
     threadId,
     messages,
-    aiResponse,
-    chatItems,
+    addMessage,
+    setNextProcessStatus,
     sendMessage,
-    connect,
-    startTyping,
-    stopTyping,
+    sendOptionMessage,
     startNewChat,
     fetchProcess,
   } = useSSE({
     serverUrl: "http://localhost:22041",
     threadId: currentThreadId,
     autoConnect: false,
+    autoRestore: !isNewChatMode, // 새 채팅 모드가 아닐 때만 자동 복구
     maxRetries: 5,
     retryInterval: 3000,
   });
 
-  // currentThreadId가 변경될 때 connect 호출
-  useEffect(() => {
-    if (currentThreadId && currentThreadId !== threadId) {
-      connect(currentThreadId);
-    }
-  }, [currentThreadId, threadId, connect]);
+  // 현재 채널의 최고 도달 단계 계산 - useMemo로 최적화
+  const maxReachedStatus = useMemo((): ProcessStatus | undefined => {
+    if (!threadId) return undefined;
 
-  // threadId가 빈값이 되면 currentThreadId도 초기화
+    const currentChatItem = chatItems.find(
+      (item) => item.lastThreadId === threadId
+    );
+
+    if (!currentChatItem) return processStatus;
+
+    // lastProcess와 processStatus 중 더 높은 단계 반환
+    const lastProcessIndex = currentChatItem.lastProcess
+      ? PROCESS_STATUS_ORDER.indexOf(currentChatItem.lastProcess)
+      : -1;
+    const currentProcessIndex = PROCESS_STATUS_ORDER.indexOf(processStatus);
+
+    return lastProcessIndex > currentProcessIndex
+      ? currentChatItem.lastProcess!
+      : processStatus;
+  }, [threadId, chatItems, processStatus]);
+
+  // fetchProcess를 래핑하여 selectedProcessStatus 관리 - useCallback으로 최적화
+  const handleFetchProcess = useCallback(
+    (status: ProcessStatus) => {
+      setSelectedProcessStatus(status);
+      fetchProcess(status);
+    },
+    [fetchProcess]
+  );
+
+  const handleNewChat = useCallback(() => {
+    console.log(
+      "🆕 새 채팅 시작 버튼 클릭 - 현재 currentThreadId:",
+      currentThreadId,
+      "threadId:",
+      threadId
+    );
+    setIsNewChatMode(true); // 새 채팅 모드 활성화
+    setCurrentThreadId(undefined); // 명시적으로 currentThreadId 초기화
+    setIsInitialLoad(false); // 새 채팅 시작은 사용자 액션임을 명시
+    startNewChat();
+  }, [currentThreadId, threadId, startNewChat]);
+
+  // 안정적인 콜백 함수들
+  const handleToggleSidebar = useCallback(
+    () => setSidebarOpen((prev) => !prev),
+    []
+  );
+  const handleSetThreadId = useCallback((newThreadId: string) => {
+    console.log("📱 사이드바에서 세션 선택:", newThreadId);
+    setIsNewChatMode(false); // 세션 선택 시 새 채팅 모드 해제
+    setCurrentThreadId(newThreadId);
+  }, []);
+
+  // 사이드바 Props를 메모이제이션하여 불필요한 리렌더링 방지
+  const sidebarProps = useMemo(
+    () => ({
+      isOpen: sidebarOpen,
+      onToggle: handleToggleSidebar,
+      chattingProps: {
+        threadId: threadId,
+        setThreadId: handleSetThreadId,
+        onNewChat: handleNewChat,
+      },
+    }),
+    [
+      sidebarOpen,
+      threadId,
+      handleToggleSidebar,
+      handleSetThreadId,
+      handleNewChat,
+    ]
+  );
+
+  // 안정적인 sendMessage 함수
+  const handleSendMessage = useCallback(
+    (message: string) => {
+      // 첫 메시지 전송 시 새 채팅 모드 해제
+      if (isNewChatMode) {
+        console.log("📝 첫 메시지 전송으로 새 채팅 모드 해제");
+        setIsNewChatMode(false);
+      }
+      return sendMessage(message);
+    },
+    [isNewChatMode, sendMessage]
+  );
+
+  // 메뉴 옵션 선택 핸들러
+  const handleMenuOptionSelect = useCallback(
+    (selectedOption: MenuOption) => {
+      console.log("📋 메뉴 옵션 선택:", selectedOption);
+
+      // 주제 선정 워크플로우
+      if (processStatus === "TOPIC") {
+        debugger;
+        switch (selectedOption.value) {
+          // 데이터 설정 - 자동
+          case "1":
+            addMessage(selectedOption.label, "human");
+            setNextProcessStatus();
+            addMessage("데이터 수집단계로 이동합니다.", "ai");
+            addMessage("", "ai", "DATA_UPLOAD");
+            break;
+
+          // return sendOptionMessage(option);
+          // 데이터 설정 - 수동
+          case "2":
+            addMessage("새 채팅을 시작합니다.", "human");
+            break;
+          // 주제 재설정
+          case "3":
+            1;
+            addMessage("새 채팅을 시작합니다.", "human");
+            break;
+          default:
+            break;
+        }
+      }
+      return;
+    },
+    [processStatus]
+  );
+
+  // PromptBox Props를 메모이제이션
+  const promptBoxProps = useMemo(
+    () => ({
+      inputType,
+      processStatus,
+      placeholder: PromptBoxThreadMessage[threadState],
+      disabled:
+        threadState === "CONNECTING" ||
+        threadState === "SENDING" ||
+        threadState === "RECEIVING" ||
+        threadState === "RECONNECTING",
+      sendMessage: handleSendMessage,
+    }),
+    [inputType, processStatus, threadState, handleSendMessage]
+  );
+
+  // ChatView Props를 메모이제이션
+  const chatViewProps = useMemo(
+    () => ({
+      messages,
+      isLoading: threadState === "SENDING" || threadState === "RECEIVING",
+      threadId,
+      threadState,
+      processStatus,
+      selectedStatus: selectedProcessStatus,
+      maxReachedStatus,
+      fetchProcess: handleFetchProcess,
+      onMenuOptionSelect: handleMenuOptionSelect,
+      className: "h-full",
+      maxHeight: "100%",
+    }),
+    [
+      messages,
+      threadState,
+      threadId,
+      processStatus,
+      selectedProcessStatus,
+      maxReachedStatus,
+      handleFetchProcess,
+      handleMenuOptionSelect,
+    ]
+  );
+
+  // 초기 로드 시에만 useSSE에서 설정된 threadId를 currentThreadId에 동기화
   useEffect(() => {
-    if (threadId === "" && currentThreadId !== undefined) {
+    if (!initializedRef.current && isInitialLoad) {
+      console.log("🔄 초기 로드 처리:", { threadId, isNewChatMode });
+      if (threadId && !isNewChatMode) {
+        console.log("🔄 초기 로드 시 threadId 동기화:", threadId);
+        setCurrentThreadId(threadId);
+      }
+      setIsInitialLoad(false); // threadId 유무와 관계없이 초기 로드 완료 처리
+      initializedRef.current = true; // 초기화 완료 마킹
+    }
+  }, [isInitialLoad, threadId, isNewChatMode]);
+
+  // threadId가 빈값이 되면 currentThreadId도 초기화 (새 채팅 시작 시에만)
+  useEffect(() => {
+    // 새 채팅 모드에서만 currentThreadId 초기화 (세션 선택 시에는 실행 안함)
+    // 초기화가 완료된 후에만 실행
+    if (
+      initializedRef.current &&
+      threadId === "" &&
+      currentThreadId !== undefined &&
+      isNewChatMode
+    ) {
+      console.log("🔄 새 채팅 시작으로 currentThreadId 초기화");
       setCurrentThreadId(undefined);
     }
-  }, [threadId, currentThreadId]);
+  }, [threadId, isNewChatMode]); // currentThreadId 제거하여 무한 루프 방지
 
   return (
-    <Layout
-      showSidebar={true}
-      sidebarProps={{
-        isOpen: sidebarOpen,
-        onToggle: () => setSidebarOpen((prev) => !prev),
-        chattingProps: {
-          threadId: threadId,
-          history: chatItems,
-          setThreadId: setCurrentThreadId,
-          onNewChat: startNewChat,
-        },
-      }}
-    >
+    <Layout showSidebar={true} sidebarProps={sidebarProps}>
       <div className="h-screen flex flex-col bg-gray-50">
         {/* 헤더 */}
         <div className="flex-shrink-0 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
@@ -152,19 +344,7 @@ const Main = () => {
                       </div>
                     </div>
                   ) : (
-                    <ChatView
-                      messages={messages}
-                      aiResponse={aiResponse}
-                      isLoading={
-                        threadState === "SENDING" || threadState === "RECEIVING"
-                      }
-                      threadId={threadId}
-                      threadState={threadState}
-                      processStatus={processStatus}
-                      fetchProcess={fetchProcess}
-                      className="h-full"
-                      maxHeight="100%"
-                    />
+                    <ChatView {...chatViewProps} />
                   )}
                 </div>
               </div>
@@ -173,20 +353,7 @@ const Main = () => {
 
           {/* Fixed Prompt Box - 메인 컨텐츠 영역 내부에 absolute 배치 */}
           <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 w-full max-w-4xl px-4 z-50">
-            <PromptBox
-              inputType={inputType}
-              processStatus={processStatus}
-              placeholder={PromptBoxThreadMessage[threadState]}
-              disabled={
-                threadState === "CONNECTING" ||
-                threadState === "SENDING" ||
-                threadState === "RECEIVING" ||
-                threadState === "RECONNECTING"
-              }
-              sendMessage={sendMessage}
-              onTyping={startTyping}
-              onStopTyping={stopTyping}
-            />
+            <PromptBox {...promptBoxProps} />
           </div>
         </div>
       </div>

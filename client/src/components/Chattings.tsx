@@ -1,14 +1,12 @@
-import React, { useState, useEffect } from "react";
-import { List, Button, Typography, Tooltip } from "antd";
+import { Button, Typography, Tooltip } from "antd";
 import { MessageSquare, Plus, Calendar } from "lucide-react";
-import { ProcessStatus } from "@/types/session";
-import { ChatItem } from "@/hooks/useSSE";
+import { useChatStore } from "@/stores/chatStore";
+import { useEffect } from "react";
 
 const { Text } = Typography;
 export interface ChattingsProps {
   className?: string;
   threadId?: string;
-  history?: ChatItem[];
   setThreadId: (threadId: string) => void;
   onNewChat?: () => void;
 }
@@ -16,11 +14,19 @@ export interface ChattingsProps {
 const Chattings = ({
   className = "",
   threadId,
-  history,
   setThreadId,
   onNewChat,
 }: ChattingsProps) => {
-  const [chatItems, setChatItems] = useState<ChatItem[]>(history ?? []);
+  // Zustand store에서 chatItems 가져오기 - selector 패턴 사용
+  const chatItems = useChatStore((state) => state.chatItems);
+
+  // chatItems 로드 상태 디버깅
+  useEffect(() => {
+    console.log('💬 Chattings.tsx chatItems 상태:', {
+      length: chatItems.length,
+      items: chatItems.map(item => ({ id: item.rootThreadId, submit: item.submit }))
+    });
+  }, [chatItems]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -33,11 +39,6 @@ const Chattings = ({
     if (diffDays <= 7) return `${diffDays}일 전`;
     return date.toLocaleDateString("ko-KR");
   };
-
-  // history props 변경 시 chatItems 업데이트
-  useEffect(() => {
-    setChatItems(history ?? []);
-  }, [history]);
 
   const createNewThread = () => {
     onNewChat?.();
@@ -69,7 +70,10 @@ const Chattings = ({
                     ? "bg-gradient-to-r from-purple-50 to-blue-50 border-l-3 border-purple-500"
                     : "hover:bg-gray-50"
                 }`}
-                onClick={() => setThreadId(item.rootThreadId)}
+                onClick={() => {
+                  console.log("📱 채팅 항목 클릭:", item.rootThreadId);
+                  setThreadId(item.rootThreadId);
+                }}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0 pr-2">
@@ -87,17 +91,6 @@ const Chattings = ({
                         {item.submit}
                       </Text>
                     </div>
-
-                    {/* 마지막 메시지
-                    <div className="mb-2">
-                      <Text
-                        type="secondary"
-                        className="text-xs line-clamp-2 text-gray-500"
-                        title={item.submit}
-                      >
-                        {item.submit}
-                      </Text>
-                    </div> */}
 
                     {/* 날짜 */}
                     <div className="flex items-center text-xs text-gray-400">

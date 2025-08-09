@@ -1,44 +1,53 @@
-import React, { useEffect, useRef, useState } from "react";
-import { Card, Typography, Empty, Spin, Badge } from "antd";
-import {
-  MessageSquare,
-  User,
-  Bot,
-  Target,
-  Database,
-  Wrench,
-  Rocket,
-} from "lucide-react";
-import { SSEMessage, AIResponse } from "@/hooks/useSSE";
+import { useEffect, useRef, useState } from "react";
+import { Card, Typography, Empty, Spin } from "antd";
+import { MessageSquare, User, Bot } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+
+import { SSEMessage } from "@/hooks/useSSE";
 import { ThreadState, ProcessStatus } from "@/types/session";
-import Process from "./Process";
+
+import Process from "../Process";
+import Menu, { MenuOption } from "./Menu";
+import ComponentRenderer from "./ComponentRenderer";
 
 const { Text } = Typography;
 
 interface ChatViewProps {
   messages: SSEMessage[];
-  aiResponse?: AIResponse;
   isLoading?: boolean;
   threadId?: string;
   threadState?: ThreadState;
   processStatus: ProcessStatus;
+  selectedStatus?: ProcessStatus;
+  maxReachedStatus?: ProcessStatus;
   fetchProcess: (status: ProcessStatus) => void;
+  onMenuOptionSelect: (selectedOption: MenuOption) => void;
   className?: string;
   maxHeight?: string;
 }
 
 const ChatView = ({
   messages,
-  aiResponse,
   isLoading = false,
   threadId,
   threadState,
   processStatus,
+  selectedStatus,
+  maxReachedStatus,
   fetchProcess,
+  onMenuOptionSelect,
   className = "",
   maxHeight = "400px",
 }: ChatViewProps) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [showFileUpload, setShowFileUpload] = useState(false);
+
+  // TOPIC에서 DATA로 넘어갔을 때 파일 업로드 메시지 표시 여부 결정
+  useEffect(() => {
+    // processStatus가 DATA이고 messages가 있으면 파일 업로드 메시지 표시
+    const shouldShow = processStatus === "DATA" && messages.length > 0;
+    setShowFileUpload(shouldShow);
+  }, [processStatus, messages.length]);
 
   // 새 메시지가 오면 스크롤을 아래로
   useEffect(() => {
@@ -59,30 +68,42 @@ const ChatView = ({
 
     return (
       <div
-        className={`flex items-center justify-center ${className}`}
-        style={{ height: maxHeight }}
+        className={`flex flex-col h-full ${className}`}
+        style={{ maxHeight }}
       >
-        <Empty
-          image={<MessageSquare className="w-16 h-16 text-gray-300" />}
-          description={
-            <div className="text-center">
-              <p className="text-gray-500 mb-2">
-                {isNewChat
-                  ? "새로운 채팅을 시작하세요"
-                  : threadId
-                  ? "대화 히스토리가 없습니다"
-                  : "세션을 선택하세요"}
-              </p>
-              <p className="text-sm text-gray-400">
-                {isNewChat
-                  ? "아래 입력창에 메시지를 입력해 채팅을 시작하세요."
-                  : threadId
-                  ? "아래 입력창에 메시지를 입력해보세요."
-                  : "사이드바에서 채팅 세션을 선택하거나 새로 시작하세요."}
-              </p>
-            </div>
-          }
+        {/* ProcessStatus 표시 */}
+        <Process
+          threadState={threadState}
+          processStatus={processStatus}
+          selectedStatus={selectedStatus}
+          maxReachedStatus={maxReachedStatus}
         />
+        <div
+          className={`flex items-center justify-center ${className}`}
+          style={{ height: maxHeight }}
+        >
+          <Empty
+            image={<MessageSquare className="w-16 h-16 text-gray-300" />}
+            description={
+              <div className="text-center">
+                <p className="text-gray-500 mb-2">
+                  {isNewChat
+                    ? "새로운 채팅을 시작하세요"
+                    : threadId
+                    ? "대화 히스토리가 없습니다"
+                    : "세션을 선택하세요"}
+                </p>
+                <p className="text-sm text-gray-400">
+                  {isNewChat
+                    ? "아래 입력창에 메시지를 입력해 채팅을 시작하세요."
+                    : threadId
+                    ? "아래 입력창에 메시지를 입력해보세요."
+                    : "사이드바에서 채팅 세션을 선택하거나 새로 시작하세요."}
+                </p>
+              </div>
+            }
+          />
+        </div>
       </div>
     );
   }
@@ -93,6 +114,8 @@ const ChatView = ({
       <Process
         threadState={threadState}
         processStatus={processStatus}
+        selectedStatus={selectedStatus}
+        maxReachedStatus={maxReachedStatus}
         fetchProcess={fetchProcess}
       />
 
@@ -104,18 +127,18 @@ const ChatView = ({
           <div
             key={`ChatView-${threadId}-Chat-${idx}`}
             className={`flex items-start space-x-3 ${
-              message.type === "user" ? "flex-row-reverse space-x-reverse" : ""
+              message.type === "human" ? "flex-row-reverse space-x-reverse" : ""
             }`}
           >
             {/* 아바타 */}
             <div
               className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-                message.type === "user"
+                message.type === "human"
                   ? "bg-gradient-to-r from-purple-500 to-blue-500"
                   : "bg-gradient-to-r from-green-500 to-teal-500"
               }`}
             >
-              {message.type === "user" ? (
+              {message.type === "human" ? (
                 <User className="w-4 h-4 text-white" />
               ) : (
                 <Bot className="w-4 h-4 text-white" />
@@ -125,14 +148,14 @@ const ChatView = ({
             {/* 메시지 내용 */}
             <div
               className={`min-w-0 max-w-[75%] ${
-                message.type === "user"
+                message.type === "human"
                   ? "flex flex-col items-end"
                   : "flex flex-col items-start"
               }`}
             >
               <div
                 className={`flex items-center space-x-2 mb-1 ${
-                  message.type === "user"
+                  message.type === "human"
                     ? "flex-row-reverse space-x-reverse"
                     : ""
                 }`}
@@ -140,32 +163,46 @@ const ChatView = ({
                 <Text
                   strong
                   className={`text-sm ${
-                    message.type === "user"
+                    message.type === "human"
                       ? "text-purple-700"
                       : "text-green-700"
                   }`}
                 >
-                  {message.type === "user" ? "사용자" : "AI"}
+                  {message.type === "human" ? "사용자" : "AI"}
                 </Text>
-                <Text type="secondary" className="text-xs">
-                  {formatTime(message.timestamp)}
-                </Text>
+                {message?.timestamp && (
+                  <Text type="secondary" className="text-xs">
+                    {formatTime(message.timestamp)}
+                  </Text>
+                )}
               </div>
 
               <Card
                 size="small"
                 className={`${
-                  message.type === "user"
+                  message.type === "human"
                     ? "bg-gradient-to-r from-purple-50 to-blue-50 border-purple-200"
                     : "bg-gradient-to-r from-green-50 to-teal-50 border-green-200"
                 } shadow-sm inline-block`}
                 styles={{ body: { padding: "12px" } }}
               >
-                <div className="text-gray-800 whitespace-pre-wrap break-words">
-                  {message.content}
-                </div>
+                {/* 컴포넌트 메시지 처리 */}
+                {message.componentType ? (
+                  <ComponentRenderer
+                    message={message}
+                    onMenuOptionSelect={onMenuOptionSelect}
+                  />
+                ) : (
+                  <div className="text-gray-800 prose prose-sm max-w-none">
+                    <ReactMarkdown>
+                      {Array.isArray(message.content)
+                        ? message.content.join("\n")
+                        : message.content}
+                    </ReactMarkdown>
+                  </div>
+                )}
                 {/* 순차 메시지 표시 (만약 sequence 정보가 있다면) */}
-                {message.type === "server" &&
+                {message.type === "ai" &&
                   (message as any).sequence &&
                   (message as any).total && (
                     <div className="text-xs text-gray-400 mt-1">
@@ -176,35 +213,6 @@ const ChatView = ({
             </div>
           </div>
         ))}
-
-        {/* 진행 중인 AI 응답 표시 */}
-        {aiResponse && !aiResponse.isComplete && aiResponse.content && (
-          <div className="flex items-start space-x-3">
-            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-r from-green-500 to-teal-500 flex items-center justify-center">
-              <Bot className="w-4 h-4 text-white" />
-            </div>
-            <div className="min-w-0 max-w-[75%] flex flex-col items-start">
-              <div className="flex items-center space-x-2 mb-1">
-                <Text strong className="text-sm text-green-700">
-                  AI
-                </Text>
-                <Text type="secondary" className="text-xs">
-                  응답 중...
-                </Text>
-                <Spin size="small" />
-              </div>
-              <Card
-                size="small"
-                className="bg-gradient-to-r from-green-50 to-teal-50 border-green-200 shadow-sm inline-block"
-                styles={{ body: { padding: "12px" } }}
-              >
-                <div className="text-gray-800 whitespace-pre-wrap break-words">
-                  {aiResponse.content}
-                </div>
-              </Card>
-            </div>
-          </div>
-        )}
 
         {/* 로딩 표시 */}
         {isLoading && (
@@ -236,6 +244,9 @@ const ChatView = ({
             </div>
           </div>
         )}
+
+        {/* 파일 업로드 AI 메시지 - DATA 단계에서만 표시 */}
+        {/* {showFileUpload && <Uploader />} */}
 
         {/* 스크롤 앵커 */}
         <div ref={messagesEndRef} />
