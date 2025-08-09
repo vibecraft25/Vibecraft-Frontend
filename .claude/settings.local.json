@@ -16,7 +16,10 @@
       "Bash(git commit:*)",
       "Bash(npm install:*)",
       "mcp__context7__resolve-library-id",
-      "mcp__context7__get-library-docs"
+      "mcp__context7__get-library-docs",
+      "Bash(grep:*)",
+      "mcp__sequential-thinking__sequentialthinking",
+      "Bash(npm run build:*)"
     ],
     "deny": []
   }
