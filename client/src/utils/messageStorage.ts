@@ -33,30 +33,99 @@ const initMessageDB = async (): Promise<IDBPDatabase<MessageDB>> => {
 };
 
 /**
- * 특정 스레드의 모든 메시지 가져오기
+ * 특정 스레드의 모든 메시지 가져오기 (백업 포함)
  */
 export const getMessages = async (threadId: string): Promise<SSEMessage[]> => {
   try {
+    // 1차: IndexedDB에서 로드
     const db = await initMessageDB();
     const messages = await db.get('messages', threadId);
-    console.log(`📨 메시지 로드: ${threadId} (${messages?.length || 0}개)`);
-    return messages || [];
+    
+    if (messages && messages.length > 0) {
+      console.log(`📨 메시지 로드: ${threadId} (${messages.length}개)`);
+      return messages;
+    }
+    
+    // 2차: IndexedDB에 없으면 localStorage 백업에서 로드
+    console.log(`🔍 IndexedDB에서 메시지를 찾을 수 없어 localStorage 백업 확인: ${threadId}`);
+    const backupMessages = loadFromLocalStorageBackup(threadId);
+    
+    if (backupMessages.length > 0) {
+      // 백업에서 복원된 메시지를 IndexedDB에 다시 저장
+      try {
+        await db.put('messages', backupMessages, threadId);
+        console.log(`✅ localStorage 백업에서 IndexedDB로 복원: ${threadId} (${backupMessages.length}개)`);
+      } catch (restoreError) {
+        console.error('❌ 백업 메시지 복원 실패:', threadId, restoreError);
+      }
+      return backupMessages;
+    }
+    
+    console.log(`📨 메시지 로드: ${threadId} (0개)`);
+    return [];
   } catch (error) {
     console.error('❌ 메시지 로드 실패:', threadId, error);
-    return [];
+    
+    // IndexedDB 완전 실패시 localStorage 백업만 시도
+    const backupMessages = loadFromLocalStorageBackup(threadId);
+    console.log(`🔄 IndexedDB 실패로 localStorage 백업만 사용: ${threadId} (${backupMessages.length}개)`);
+    return backupMessages;
   }
 };
 
 /**
- * 스레드의 메시지들 전체 저장/교체
+ * localStorage 백업 저장 (IndexedDB 실패 시 사용)
+ */
+const saveToLocalStorageBackup = (threadId: string, messages: SSEMessage[]): void => {
+  try {
+    const key = `vibecraft_messages_backup_${threadId}`;
+    const data = JSON.stringify({
+      threadId,
+      messages,
+      timestamp: Date.now()
+    });
+    localStorage.setItem(key, data);
+    console.log(`🔄 localStorage 백업 저장: ${threadId} (${messages.length}개)`);
+  } catch (error) {
+    console.error('❌ localStorage 백업 저장 실패:', threadId, error);
+  }
+};
+
+/**
+ * localStorage 백업에서 복원
+ */
+const loadFromLocalStorageBackup = (threadId: string): SSEMessage[] => {
+  try {
+    const key = `vibecraft_messages_backup_${threadId}`;
+    const data = localStorage.getItem(key);
+    if (data) {
+      const parsed = JSON.parse(data);
+      console.log(`🔄 localStorage 백업에서 복원: ${threadId} (${parsed.messages?.length || 0}개)`);
+      return parsed.messages || [];
+    }
+  } catch (error) {
+    console.error('❌ localStorage 백업 복원 실패:', threadId, error);
+  }
+  return [];
+};
+
+/**
+ * 스레드의 메시지들 전체 저장/교체 (백업 포함)
  */
 export const saveMessages = async (threadId: string, messages: SSEMessage[]): Promise<void> => {
   try {
+    // 1차: IndexedDB 저장
     const db = await initMessageDB();
     await db.put('messages', messages, threadId);
     console.log(`💾 메시지 저장: ${threadId} (${messages.length}개)`);
+    
+    // 2차: localStorage 백업 저장
+    saveToLocalStorageBackup(threadId, messages);
   } catch (error) {
     console.error('❌ 메시지 저장 실패:', threadId, error);
+    
+    // IndexedDB 실패시 localStorage 백업만 저장
+    saveToLocalStorageBackup(threadId, messages);
     throw error;
   }
 };

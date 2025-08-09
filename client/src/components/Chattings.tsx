@@ -6,15 +6,15 @@ import { useEffect } from "react";
 const { Text } = Typography;
 export interface ChattingsProps {
   className?: string;
-  threadId?: string;
-  setThreadId: (threadId: string) => void;
+  channelId?: string;
+  switchChannel: (channelId: string) => void;
   onNewChat?: () => void;
 }
 
 const Chattings = ({
   className = "",
-  threadId,
-  setThreadId,
+  channelId,
+  switchChannel,
   onNewChat,
 }: ChattingsProps) => {
   // Zustand store에서 chatItems 가져오기 - selector 패턴 사용
@@ -22,9 +22,12 @@ const Chattings = ({
 
   // chatItems 로드 상태 디버깅
   useEffect(() => {
-    console.log('💬 Chattings.tsx chatItems 상태:', {
+    console.log("💬 Chattings.tsx chatItems 상태:", {
       length: chatItems.length,
-      items: chatItems.map(item => ({ id: item.rootThreadId, submit: item.submit }))
+      items: chatItems.map((item) => ({
+        id: item.rootThreadId,
+        submit: item.submit,
+      })),
     });
   }, [chatItems]);
 
@@ -40,7 +43,7 @@ const Chattings = ({
     return date.toLocaleDateString("ko-KR");
   };
 
-  const createNewThread = () => {
+  const createNewChannel = () => {
     onNewChat?.();
   };
 
@@ -51,14 +54,14 @@ const Chattings = ({
         <Button
           type="primary"
           icon={<Plus className="w-4 h-4" />}
-          onClick={createNewThread}
+          onClick={createNewChannel}
           className="w-full bg-gradient-to-r from-purple-500 to-blue-500 border-0 rounded-lg"
         >
           새 채팅 시작
         </Button>
       </div>
 
-      {/* 채팅 세션 목록 */}
+      {/* 채팅 채널 목록 */}
       <div className="flex-1 overflow-y-auto">
         {chatItems.length > 0 ? (
           <div className="space-y-1">
@@ -66,13 +69,13 @@ const Chattings = ({
               <div
                 key={item.rootThreadId}
                 className={`cursor-pointer transition-all duration-200 rounded-lg mx-3 px-3 py-3 group hover:bg-gray-50 ${
-                  item.rootThreadId === threadId
+                  item.rootThreadId === channelId
                     ? "bg-gradient-to-r from-purple-50 to-blue-50 border-l-3 border-purple-500"
                     : "hover:bg-gray-50"
                 }`}
                 onClick={() => {
                   console.log("📱 채팅 항목 클릭:", item.rootThreadId);
-                  setThreadId(item.rootThreadId);
+                  switchChannel(item.rootThreadId);
                 }}
               >
                 <div className="flex items-start justify-between">
@@ -80,9 +83,9 @@ const Chattings = ({
                     {/* 제목 */}
                     <div className="mb-2">
                       <Text
-                        strong={item.rootThreadId === threadId}
+                        strong={item.rootThreadId === channelId}
                         className={`text-sm line-clamp-2 ${
-                          item.rootThreadId === threadId
+                          item.rootThreadId === channelId
                             ? "text-purple-700"
                             : "text-gray-800"
                         }`}
@@ -127,7 +130,7 @@ const Chattings = ({
             </Text>
             <Button
               type="link"
-              onClick={createNewThread}
+              onClick={createNewChannel}
               className="text-purple-600 hover:text-purple-700 p-0"
             >
               첫 번째 채팅을 시작해보세요

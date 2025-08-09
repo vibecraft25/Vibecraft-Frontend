@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { Card, Typography, Empty, Spin } from "antd";
 import { MessageSquare, User, Bot } from "lucide-react";
 import ReactMarkdown from "react-markdown";
@@ -7,7 +7,6 @@ import { SSEMessage } from "@/hooks/useSSE";
 import { ThreadState, ProcessStatus } from "@/types/session";
 
 import Process from "../Process";
-import Menu, { MenuOption } from "./Menu";
 import ComponentRenderer from "./ComponentRenderer";
 
 const { Text } = Typography;
@@ -15,39 +14,59 @@ const { Text } = Typography;
 interface ChatViewProps {
   messages: SSEMessage[];
   isLoading?: boolean;
-  threadId?: string;
+  channelId?: string;
   threadState?: ThreadState;
   processStatus: ProcessStatus;
   selectedStatus?: ProcessStatus;
   maxReachedStatus?: ProcessStatus;
   fetchProcess: (status: ProcessStatus) => void;
-  onMenuOptionSelect: (selectedOption: MenuOption) => void;
+  onMenuOptionSelect: (selectedOption: any) => void;
   className?: string;
   maxHeight?: string;
 }
 
-const ChatView = ({
-  messages,
-  isLoading = false,
-  threadId,
-  threadState,
-  processStatus,
-  selectedStatus,
-  maxReachedStatus,
-  fetchProcess,
-  onMenuOptionSelect,
-  className = "",
-  maxHeight = "400px",
-}: ChatViewProps) => {
+const ChatView = (props: ChatViewProps) => {
+  const {
+    messages,
+    isLoading = false,
+    channelId,
+    threadState,
+    processStatus,
+    selectedStatus,
+    maxReachedStatus,
+    fetchProcess,
+    onMenuOptionSelect,
+    className = "",
+    maxHeight = "400px",
+  } = props;
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const [showFileUpload, setShowFileUpload] = useState(false);
 
-  // TOPIC에서 DATA로 넘어갔을 때 파일 업로드 메시지 표시 여부 결정
+  // Props 전체 디버깅 - 컴포넌트가 렌더링될 때마다 실행
+  console.log("🎯 ChatView 렌더링:", {
+    propsKeys: Object.keys(props),
+    messagesLength: messages?.length || 0,
+    messagesIsArray: Array.isArray(messages),
+    channelId,
+    isLoading,
+    threadState,
+    timestamp: new Date().toISOString(),
+    firstMessage: messages?.[0]?.content?.slice(0, 30) || 'none'
+  });
+
+  // 메시지 업데이트 디버깅
   useEffect(() => {
-    // processStatus가 DATA이고 messages가 있으면 파일 업로드 메시지 표시
-    const shouldShow = processStatus === "DATA" && messages.length > 0;
-    setShowFileUpload(shouldShow);
-  }, [processStatus, messages.length]);
+    console.log("🔄 ChatView messages useEffect:", {
+      length: messages?.length || 0,
+      channelId,
+      timestamp: new Date().toISOString(),
+      messages: messages?.map?.((m) => ({
+        content:
+          typeof m.content === "string" ? m.content.slice(0, 50) : "array",
+        type: m.type,
+      })) || []
+    });
+  }, [messages, channelId]);
 
   // 새 메시지가 오면 스크롤을 아래로
   useEffect(() => {
@@ -89,14 +108,14 @@ const ChatView = ({
                 <p className="text-gray-500 mb-2">
                   {isNewChat
                     ? "새로운 채팅을 시작하세요"
-                    : threadId
+                    : channelId
                     ? "대화 히스토리가 없습니다"
                     : "세션을 선택하세요"}
                 </p>
                 <p className="text-sm text-gray-400">
                   {isNewChat
                     ? "아래 입력창에 메시지를 입력해 채팅을 시작하세요."
-                    : threadId
+                    : channelId
                     ? "아래 입력창에 메시지를 입력해보세요."
                     : "사이드바에서 채팅 세션을 선택하거나 새로 시작하세요."}
                 </p>
@@ -125,7 +144,7 @@ const ChatView = ({
       >
         {messages.map((message, idx) => (
           <div
-            key={`ChatView-${threadId}-Chat-${idx}`}
+            key={`ChatView-${channelId}-Chat-${idx}`}
             className={`flex items-start space-x-3 ${
               message.type === "human" ? "flex-row-reverse space-x-reverse" : ""
             }`}

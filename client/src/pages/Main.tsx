@@ -43,12 +43,12 @@ const Main = () => {
     threadState,
     processStatus,
     inputType,
-    threadId,
+    channelId,
     messages,
+    switchChannel,
     addMessage,
     setNextProcessStatus,
     sendMessage,
-    sendOptionMessage,
     startNewChat,
     fetchProcess,
   } = useSSE({
@@ -62,10 +62,10 @@ const Main = () => {
 
   // 현재 채널의 최고 도달 단계 계산 - useMemo로 최적화
   const maxReachedStatus = useMemo((): ProcessStatus | undefined => {
-    if (!threadId) return undefined;
+    if (!channelId) return undefined;
 
     const currentChatItem = chatItems.find(
-      (item) => item.lastThreadId === threadId
+      (item) => item.lastThreadId === channelId
     );
 
     if (!currentChatItem) return processStatus;
@@ -79,7 +79,7 @@ const Main = () => {
     return lastProcessIndex > currentProcessIndex
       ? currentChatItem.lastProcess!
       : processStatus;
-  }, [threadId, chatItems, processStatus]);
+  }, [channelId, chatItems, processStatus]);
 
   // fetchProcess를 래핑하여 selectedProcessStatus 관리 - useCallback으로 최적화
   const handleFetchProcess = useCallback(
@@ -94,25 +94,20 @@ const Main = () => {
     console.log(
       "🆕 새 채팅 시작 버튼 클릭 - 현재 currentThreadId:",
       currentThreadId,
-      "threadId:",
-      threadId
+      "channelId:",
+      channelId
     );
     setIsNewChatMode(true); // 새 채팅 모드 활성화
     setCurrentThreadId(undefined); // 명시적으로 currentThreadId 초기화
     setIsInitialLoad(false); // 새 채팅 시작은 사용자 액션임을 명시
     startNewChat();
-  }, [currentThreadId, threadId, startNewChat]);
+  }, [currentThreadId, channelId, startNewChat]);
 
   // 안정적인 콜백 함수들
   const handleToggleSidebar = useCallback(
     () => setSidebarOpen((prev) => !prev),
     []
   );
-  const handleSetThreadId = useCallback((newThreadId: string) => {
-    console.log("📱 사이드바에서 세션 선택:", newThreadId);
-    setIsNewChatMode(false); // 세션 선택 시 새 채팅 모드 해제
-    setCurrentThreadId(newThreadId);
-  }, []);
 
   // 사이드바 Props를 메모이제이션하여 불필요한 리렌더링 방지
   const sidebarProps = useMemo(
@@ -120,18 +115,12 @@ const Main = () => {
       isOpen: sidebarOpen,
       onToggle: handleToggleSidebar,
       chattingProps: {
-        threadId: threadId,
-        setThreadId: handleSetThreadId,
+        channelId: channelId,
+        switchChannel: switchChannel,
         onNewChat: handleNewChat,
       },
     }),
-    [
-      sidebarOpen,
-      threadId,
-      handleToggleSidebar,
-      handleSetThreadId,
-      handleNewChat,
-    ]
+    [sidebarOpen, channelId, handleToggleSidebar, switchChannel, handleNewChat]
   );
 
   // 안정적인 sendMessage 함수
@@ -154,7 +143,6 @@ const Main = () => {
 
       // 주제 선정 워크플로우
       if (processStatus === "TOPIC") {
-        debugger;
         switch (selectedOption.value) {
           // 데이터 설정 - 자동
           case "1":
@@ -199,25 +187,51 @@ const Main = () => {
     [inputType, processStatus, threadState, handleSendMessage]
   );
 
+  // Main에서 messages 디버깅
+  useEffect(() => {
+    console.log("📨 Main.tsx messages 업데이트:", {
+      length: messages.length,
+      channelId,
+      timestamp: new Date().toISOString(),
+      messages: messages.map(m => ({ 
+        content: typeof m.content === 'string' ? m.content.slice(0, 50) : 'array', 
+        type: m.type,
+        messageId: m.messageId 
+      }))
+    });
+  }, [messages, channelId]);
+
   // ChatView Props를 메모이제이션
   const chatViewProps = useMemo(
-    () => ({
-      messages,
-      isLoading: threadState === "SENDING" || threadState === "RECEIVING",
-      threadId,
-      threadState,
-      processStatus,
-      selectedStatus: selectedProcessStatus,
-      maxReachedStatus,
-      fetchProcess: handleFetchProcess,
-      onMenuOptionSelect: handleMenuOptionSelect,
-      className: "h-full",
-      maxHeight: "100%",
-    }),
+    () => {
+      const props = {
+        messages,
+        isLoading: threadState === "SENDING" || threadState === "RECEIVING",
+        channelId, // ChatView에서 channelId prop으로 받음
+        threadState,
+        processStatus,
+        selectedStatus: selectedProcessStatus,
+        maxReachedStatus,
+        fetchProcess: handleFetchProcess,
+        onMenuOptionSelect: handleMenuOptionSelect,
+        className: "h-full",
+        maxHeight: "100%",
+      };
+      
+      console.log("📦 Main.tsx chatViewProps 생성:", {
+        messagesLength: props.messages.length,
+        channelId: props.channelId,
+        threadState: props.threadState,
+        isLoading: props.isLoading,
+        timestamp: new Date().toISOString()
+      });
+      
+      return props;
+    },
     [
       messages,
       threadState,
-      threadId,
+      channelId,
       processStatus,
       selectedProcessStatus,
       maxReachedStatus,
@@ -229,15 +243,15 @@ const Main = () => {
   // 초기 로드 시에만 useSSE에서 설정된 threadId를 currentThreadId에 동기화
   useEffect(() => {
     if (!initializedRef.current && isInitialLoad) {
-      console.log("🔄 초기 로드 처리:", { threadId, isNewChatMode });
-      if (threadId && !isNewChatMode) {
-        console.log("🔄 초기 로드 시 threadId 동기화:", threadId);
-        setCurrentThreadId(threadId);
+      console.log("🔄 초기 로드 처리:", { channelId, isNewChatMode });
+      if (channelId && !isNewChatMode) {
+        console.log("🔄 초기 로드 시 threadId 동기화:", channelId);
+        setCurrentThreadId(channelId);
       }
       setIsInitialLoad(false); // threadId 유무와 관계없이 초기 로드 완료 처리
       initializedRef.current = true; // 초기화 완료 마킹
     }
-  }, [isInitialLoad, threadId, isNewChatMode]);
+  }, [isInitialLoad, channelId, isNewChatMode]);
 
   // threadId가 빈값이 되면 currentThreadId도 초기화 (새 채팅 시작 시에만)
   useEffect(() => {
@@ -245,14 +259,14 @@ const Main = () => {
     // 초기화가 완료된 후에만 실행
     if (
       initializedRef.current &&
-      threadId === "" &&
+      channelId === "" &&
       currentThreadId !== undefined &&
       isNewChatMode
     ) {
       console.log("🔄 새 채팅 시작으로 currentThreadId 초기화");
       setCurrentThreadId(undefined);
     }
-  }, [threadId, isNewChatMode]); // currentThreadId 제거하여 무한 루프 방지
+  }, [channelId, isNewChatMode]); // currentThreadId 제거하여 무한 루프 방지
 
   return (
     <Layout showSidebar={true} sidebarProps={sidebarProps}>
@@ -265,13 +279,13 @@ const Main = () => {
               <div>
                 <h1 className="text-lg font-semibold text-gray-800">
                   {(() => {
-                    if (!threadId) {
+                    if (!channelId) {
                       return "새로운 채팅";
                     }
 
                     // 현재 세션의 ChatItem 찾기
                     const currentChatItem = chatItems.find(
-                      (item) => item.lastThreadId === threadId
+                      (item) => item.lastThreadId === channelId
                     );
 
                     if (currentChatItem) {
@@ -281,8 +295,8 @@ const Main = () => {
                   })()}
                 </h1>
                 <p className="text-sm text-gray-500">
-                  {threadId
-                    ? `채팅 세션: ${threadId.slice(0, 8)}...`
+                  {channelId
+                    ? `채팅 세션: ${channelId.slice(0, 8)}...`
                     : "채팅에 연결되어 있지 않습니다."}
                 </p>
               </div>
@@ -344,7 +358,7 @@ const Main = () => {
                       </div>
                     </div>
                   ) : (
-                    <ChatView {...chatViewProps} />
+                    <ChatView key={`chatview-${channelId}-${messages.length}`} {...chatViewProps} />
                   )}
                 </div>
               </div>
