@@ -1,31 +1,34 @@
 import { useState } from "react";
 import { Upload, Button, message as antMessage } from "antd";
 import { Upload as UploadIcon, FileText } from "lucide-react";
+import {
+  UploadedFile,
+  UploaderProps,
+  SUPPORTED_FILE_EXTENSIONS,
+} from "@/types/upload";
+import { validateFile, formatUploadedFiles } from "@/utils/fileUtils";
 
-const Uploader = () => {
+const Uploader = ({ onUpdateUploadedFiles }: UploaderProps) => {
   const [uploadedFiles, setUploadedFiles] = useState<any[]>([]);
 
   // 파일 업로드 핸들러
   const handleFileUpload = (info: any) => {
     const { fileList } = info;
     setUploadedFiles(fileList);
+
+    // 상위 컴포넌트에 파일 목록 업데이트
+    if (onUpdateUploadedFiles) {
+      const formattedFiles = formatUploadedFiles(fileList);
+      onUpdateUploadedFiles(formattedFiles);
+    }
   };
 
   // 파일 업로드 전 검증
   const beforeUpload = (file: File) => {
-    const allowedTypes = [".csv", ".sql", ".json", ".xlsx", ".xls", ".txt"];
-    const fileExtension = `.${file.name.split(".").pop()?.toLowerCase()}`;
+    const validation = validateFile(file, 10);
 
-    if (!allowedTypes.includes(fileExtension)) {
-      antMessage.error(
-        `지원하지 않는 파일 형식입니다. (${allowedTypes.join(", ")}만 지원)`
-      );
-      return false;
-    }
-
-    const isLt10M = file.size / 1024 / 1024 < 10;
-    if (!isLt10M) {
-      antMessage.error("파일 크기는 10MB를 초과할 수 없습니다.");
+    if (!validation.isValid) {
+      antMessage.error(validation.error);
       return false;
     }
 
@@ -56,7 +59,8 @@ const Uploader = () => {
         multiple
         beforeUpload={beforeUpload}
         onChange={handleFileUpload}
-        fileList={uploadedFiles}
+        // fileList={uploadedFiles}
+        accept={SUPPORTED_FILE_EXTENSIONS.join(",")}
         className="bg-white/50 border-dashed border-gray-300 hover:border-green-400 transition-colors"
         style={{ minHeight: "90px" }}
       >
@@ -83,7 +87,7 @@ const Uploader = () => {
               </span>
             </div>
           ))}
-          <Button
+          {/* <Button
             type="primary"
             size="small"
             className="mt-2"
@@ -93,7 +97,7 @@ const Uploader = () => {
             }}
           >
             파일 전송
-          </Button>
+          </Button> */}
         </div>
       )}
     </div>

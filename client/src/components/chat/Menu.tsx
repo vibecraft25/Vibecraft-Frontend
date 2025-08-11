@@ -18,103 +18,105 @@ export interface MenuProps {
 
 const Menu = ({ menuList, onOptionSelect, prev, className }: MenuProps) => {
   const [selectedOption, setSelectedOption] = useState<MenuOption | null>(null);
+  // TODO : 호출 된 값이 있으면 isSubmit으로 버튼 비활성화
   const [isSumbit, setIsSubmit] = useState<boolean>(prev === true);
 
-  const isOptionsMenu =
-    menuList.length > 0 && menuList[0].includes("[Options]");
+  // const isOptionsMenu =
+  //   menuList.length > 0 && menuList[0].includes("[Options]");
 
-  if (isOptionsMenu) {
-    const options: MenuOption[] = [];
+  // if (isOptionsMenu) {
+  // }
 
-    menuList.forEach((item, index) => {
-      if (index === 0) return;
+  // return (
+  //   <div className={className}>
+  //     {menuList.map((menu: string, index: number) => (
+  //       <div key={`ai-menuitem-${index}`} className="menu-item mb-2">
+  //         <Text className="menu-text text-gray-700">{menu}</Text>
+  //       </div>
+  //     ))}
+  //   </div>
+  // );
 
-      const optionMatch = item.match(/^(\d+)\.\s*(.+)$/);
-      if (optionMatch) {
-        options.push({
-          value: optionMatch[1],
-          label: optionMatch[2],
-        });
-      }
-    });
+  const options: MenuOption[] = [];
 
-    const handleRadioChange = (e: RadioChangeEvent) => {
-      const selectedValue = e.target.value;
-      // string value를 사용하여 해당하는 option 객체 찾기
-      const foundOption = options.find(
-        (option) => option.value === selectedValue
-      );
-      if (foundOption) {
-        setSelectedOption(foundOption);
-      }
-    };
+  menuList.forEach((item, index) => {
+    if (index === 0) return;
 
-    const handleSubmit = () => {
-      if (onOptionSelect && selectedOption) {
-        onOptionSelect(selectedOption);
-        setIsSubmit(true);
-      }
-    };
+    const optionMatch = item.match(/^(\d+)\.\s*(.+)$/);
+    if (optionMatch) {
+      options.push({
+        value: optionMatch[1],
+        label: optionMatch[2],
+      });
+    }
+  });
 
-    useEffect(() => {
-      if (options.length > 0 && !selectedOption) {
-        setSelectedOption(options[0]);
-      }
-    }, [options.length]);
-
-    return (
-      <div className={`p-4 bg-transparent ${className || ""}`}>
-        <div className="mb-3">
-          <Text strong className="text-gray-800">
-            진행을 선택해주세요.
-          </Text>
-        </div>
-
-        {options.length > 0 && (
-          <div className="mb-4">
-            <Radio.Group
-              value={selectedOption?.value}
-              onChange={handleRadioChange}
-              className="w-full"
-            >
-              <div className="space-y-3">
-                {options.map((option, index) => {
-                  return (
-                    <Radio
-                      key={`option-[${index}]${option.value}`}
-                      value={option.value}
-                      className="w-full"
-                    >
-                      <span className="ml-2 text-gray-800">{option.label}</span>
-                    </Radio>
-                  );
-                })}
-              </div>
-            </Radio.Group>
-          </div>
-        )}
-
-        <div className="mt-4">
-          <Button
-            type="primary"
-            onClick={handleSubmit}
-            disabled={isSumbit}
-            className="bg-blue-500 hover:bg-blue-600"
-          >
-            선택 완료
-          </Button>
-        </div>
-      </div>
+  const handleRadioChange = (e: RadioChangeEvent) => {
+    const selectedValue = e.target.value;
+    // string value를 사용하여 해당하는 option 객체 찾기
+    const foundOption = options.find(
+      (option) => option.value === selectedValue
     );
-  }
+    if (foundOption) {
+      setSelectedOption(foundOption);
+    }
+  };
+
+  const handleSubmit = () => {
+    if (onOptionSelect && selectedOption) {
+      onOptionSelect(selectedOption);
+      setIsSubmit(true);
+    }
+  };
+
+  useEffect(() => {
+    if (options.length > 0 && !selectedOption) {
+      setSelectedOption(options[0]);
+    }
+  }, [options.length]);
 
   return (
-    <div className={className}>
-      {menuList.map((menu: string, index: number) => (
-        <div key={`ai-menuitem-${index}`} className="menu-item mb-2">
-          <Text className="menu-text text-gray-700">{menu}</Text>
+    <div className={`p-4 bg-transparent ${className || ""}`}>
+      <div className="mb-3">
+        <Text strong className="text-gray-800">
+          진행을 선택해주세요.
+        </Text>
+      </div>
+
+      {options.length > 0 && (
+        <div className="mb-4">
+          <Radio.Group
+            value={selectedOption?.value}
+            onChange={handleRadioChange}
+            className="w-full"
+          >
+            <div className="space-y-3">
+              {options.map((option, index) => {
+                return (
+                  <Radio
+                    key={`option-[${index}]${option.value}`}
+                    value={option.value}
+                    className="w-full"
+                  >
+                    <span className="ml-2 text-gray-800">{option.label}</span>
+                  </Radio>
+                );
+              })}
+            </div>
+          </Radio.Group>
         </div>
-      ))}
+      )}
+
+      <div className="mt-4">
+        <Button
+          type="primary"
+          onClick={handleSubmit}
+          disabled={isSumbit}
+          className="bg-blue-500 hover:bg-blue-600"
+        >
+          선택 완료
+        </Button>
+      </div>
     </div>
   );
 };

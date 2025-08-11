@@ -33,12 +33,7 @@ export type SSEConnectionState =
   | "RECONNECTING"
   | "ERROR";
 
-// 프로젝트 진행 상태
-export type ProcessStatus =
-  | "TOPIC" // 주제 입력 단계
-  | "DATA" // 데이터 수집 단계
-  | "BUILD" // 대시보드 구축 단계
-  | "DEPLOY"; // 배포 단계
+// export type ProcessStatus = "TOPIC" | "DATA" | "BUILD" | "DEPLOY";
 
 export type ThreadState =
   | "FIRST_VISIT" // 최초 방문, 세션 기록 없음, Intro 표시

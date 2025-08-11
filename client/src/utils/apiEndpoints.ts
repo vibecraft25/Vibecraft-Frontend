@@ -1,4 +1,4 @@
-import { ProcessStatus } from "@/types/session";
+import { ProcessStatus } from "./processStatus";
 
 // API 엔드포인트 구성
 export interface ApiEndpoint {
@@ -8,25 +8,47 @@ export interface ApiEndpoint {
 }
 
 // ProcessStatus별 API 엔드포인트 매핑
-export const API_ENDPOINTS: Record<ProcessStatus, ApiEndpoint> = {
+export const API_ENDPOINTS: Record<
+  ProcessStatus,
+  { isStream: boolean; api: ApiEndpoint }
+> = {
   TOPIC: {
-    path: "/workflow/stream/set-topic",
-    method: "GET",
-    params: {
-      use_langchain: "true",
+    isStream: true,
+    api: {
+      path: "/workflow/stream/set-topic",
+      method: "GET",
+      params: {
+        use_langchain: "true",
+      },
     },
   },
   DATA: {
-    path: "/workflow/stream/set-data",
-    method: "GET",
+    isStream: true,
+    api: {
+      path: "/workflow/stream/set-data",
+      method: "GET",
+    },
+  },
+  DATA_PROCESS: {
+    isStream: false,
+    api: {
+      path: "/workflow/visualization-type",
+      method: "GET",
+    },
   },
   BUILD: {
-    path: "/workflow/stream/set-data",
-    method: "GET",
+    isStream: true,
+    api: {
+      path: "",
+      method: "GET",
+    },
   },
   DEPLOY: {
-    path: "/workflow/stream/set-data",
-    method: "GET",
+    isStream: true,
+    api: {
+      path: "",
+      method: "GET",
+    },
   },
 };
 
@@ -48,7 +70,21 @@ export const API_OPTIONS_ENDPOINTS: Record<
       method: "GET",
     },
   },
-  DATA: {},
+  DATA: {
+    "1": {
+      path: "/workflow/stream/process-data-selection",
+      method: "GET",
+    },
+    "2": {
+      path: "/workflow/stream/process-data-selection",
+      method: "GET",
+    },
+    "3": {
+      path: "/workflow/visualization-type",
+      method: "GET",
+    },
+  },
+  DATA_PROCESS: {},
   BUILD: {},
   DEPLOY: {},
 };
@@ -61,13 +97,11 @@ export const getStreamHeaders = (): HeadersInit => ({
 
 // API 생성 함수
 export const getApiResponse = (
-  message: string,
   serverUrl: string,
   endpoint: ApiEndpoint,
   additionalParams?: Record<string, string>
 ): Promise<Response> => {
   const params = new URLSearchParams({
-    query: message,
     ...endpoint.params,
     ...additionalParams,
   });
@@ -78,4 +112,26 @@ export const getApiResponse = (
     method: endpoint.method,
     headers: getStreamHeaders(),
   });
+};
+
+// 테이블 메타데이터 API 호출 함수
+export const fetchTableMetadata = async (
+  serverUrl: string,
+  threadId: string
+) => {
+  const url = `${serverUrl}/contents/meta?thread_id=${threadId}`;
+  console.log("📡 메타데이터 API 호출:", url);
+
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`메타데이터 API 호출 실패: ${response.status}`);
+  }
+
+  return response.json();
 };

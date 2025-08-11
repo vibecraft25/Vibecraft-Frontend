@@ -3,19 +3,17 @@ import { Typography, Badge } from "antd";
 import {
   Target,
   Database,
+  PencilRuler,
   Wrench,
   Rocket,
   LucideIcon,
   Check,
 } from "lucide-react";
-import {
-  ThreadState,
-  ProcessStatus,
-  ProcessStepState,
-} from "@/types/session";
+import { ThreadState, ProcessStepState } from "@/types/session";
 import {
   isProcessStepClickable,
   PROCESS_STATUS_ORDER,
+  ProcessStatus,
 } from "@/utils/processStatus";
 
 const { Text } = Typography;
@@ -37,6 +35,12 @@ const StatusConfig: {
 }[] = [
   { status: "TOPIC", icon: Target, text: "주제 설정", color: "#1890ff" },
   { status: "DATA", icon: Database, text: "데이터 수집", color: "#52c41a" },
+  {
+    status: "DATA_PROCESS",
+    icon: PencilRuler,
+    text: "데이터 가공",
+    color: "#eb2f96",
+  },
   { status: "BUILD", icon: Wrench, text: "대시보드 구축", color: "#fa8c16" },
   { status: "DEPLOY", icon: Rocket, text: "배포", color: "#722ed1" },
 ];
@@ -46,8 +50,14 @@ const getLightBackgroundColor = (color: string): string => {
   const colorMap: { [key: string]: string } = {
     "#1890ff": "#e6f7ff", // 파란색 -> 연한 파란색
     "#52c41a": "#f6ffed", // 녹색 -> 연한 녹색
+    "#fadb14": "#fff4b8", // 노란색 -> 연한 노란색
     "#fa8c16": "#fff2e8", // 주황색 -> 연한 주황색
     "#722ed1": "#f9f0ff", // 보라색 -> 연한 보라색
+    "#eb2f96": "#fff0f6", // 분홍색 -> 연한 분홍색
+    "#f5222d": "#fff1f0", // 빨간색 -> 연한 빨간색
+    "#13c2c2": "#e6fffb", // 민트색 -> 연한 민트색
+    "#2f54eb": "#f0f5ff", // 진파랑색 -> 연한 진파랑색
+    "#a0d911": "#fcffe6", // 라임색 -> 연한 라임색
   };
   return colorMap[color] || "#f5f5f5";
 };
@@ -59,24 +69,30 @@ const getProcessStepStateNew = (
   selectedStatus?: ProcessStatus // 현재 선택된 단계
 ): ProcessStepState => {
   const stepIndex = PROCESS_STATUS_ORDER.indexOf(stepStatus);
-  const currentProgressIndex = PROCESS_STATUS_ORDER.indexOf(currentProgressStatus);
+  const currentProgressIndex = PROCESS_STATUS_ORDER.indexOf(
+    currentProgressStatus
+  );
   // Logic simplified - maxReachedStatus not needed for current implementation
 
   // 현재 진행중인 단계
   if (stepIndex === currentProgressIndex) {
     return "current";
   }
-  
+
   // 현재 선택된 단계인지 확인 (완료된 단계를 클릭한 경우만)
-  if (selectedStatus && stepStatus === selectedStatus && stepIndex < currentProgressIndex) {
+  if (
+    selectedStatus &&
+    stepStatus === selectedStatus &&
+    stepIndex < currentProgressIndex
+  ) {
     return "editing"; // 완료된 단계 중 선택된 단계
   }
-  
+
   // 완료된 단계
   if (stepIndex < currentProgressIndex) {
     return "completed";
   }
-  
+
   // 대기중인 단계
   return "pending";
 };
@@ -141,7 +157,10 @@ const Process = ({
 
   const handleProcessClick = useCallback(
     (status: ProcessStatus) => {
-      const isClickable = isProcessStepClickable(status, maxReachedStatus || processStatus);
+      const isClickable = isProcessStepClickable(
+        status,
+        maxReachedStatus || processStatus
+      );
       if (fetchProcess && isClickable) {
         fetchProcess(status);
       }
@@ -153,8 +172,8 @@ const Process = ({
     <div className="flex gap-4 p-4 border-b border-gray-100">
       {StatusConfig.map((config) => {
         const stepState = getProcessStepStateNew(
-          config.status, 
-          processStatus, 
+          config.status,
+          processStatus,
           selectedStatus
         );
         const isClickable = isProcessStepClickable(config.status, baseStatus);

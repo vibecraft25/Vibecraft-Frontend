@@ -1,4 +1,5 @@
-import { ProcessStatus, ThreadState } from "@/types/session";
+import { ThreadState } from "@/types/session";
+import { ProcessStatus } from "@/utils/processStatus";
 
 export const PromptBoxThreadMessage: Record<ThreadState, string> = {
   IDLE: "어떤 데이터를 시각화하고 싶으신가요? (예: 우리 회사 매출과 날씨의 상관관계를 보여줘)",
@@ -17,6 +18,7 @@ export const PromptBoxProcessMessage: Record<ProcessStatus, string> = {
   TOPIC:
     "어떤 주제의 대시보드를 만들고 싶으신가요? (예: 매출 분석, 고객 데이터, 웹사이트 트래픽 등)",
   DATA: "데이터에 대한 추가 정보나 요구사항을 입력하세요...",
+  DATA_PROCESS: "수정하고자 하는 컬럼, 데이터를 입력하세요...",
   BUILD: "대시보드 구축에 대한 추가 요청사항을 입력하세요...",
   DEPLOY: "배포 관련 설정이나 요청사항을 입력하세요...",
 };
