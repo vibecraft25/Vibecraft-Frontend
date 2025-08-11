@@ -1,8 +1,9 @@
 import React, { useState } from "react";
 import { Input, Button, message as antMessage } from "antd";
 import { Send, Sparkles, Loader2 } from "lucide-react";
-import { InputType, ProcessStatus } from "@/types/session";
+import { InputType } from "@/types/session";
 import { PromptBoxProcessMessage } from "@/message/prompt";
+import { ProcessStatus } from "@/utils/processStatus";
 
 interface PromptBoxProps {
   connectionState?: string;

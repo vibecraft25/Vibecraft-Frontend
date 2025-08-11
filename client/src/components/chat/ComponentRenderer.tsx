@@ -1,10 +1,12 @@
 import Menu, { MenuOption } from "./Menu";
 import { SSEMessage, ComponentType } from "@/hooks/useSSE";
 import Uploader from "./Uploader";
+import { UploadedFile } from "@/types/upload";
 
 interface ComponentRendererProps {
   message: SSEMessage;
   onMenuOptionSelect: (option: MenuOption) => void;
+  onUpdateUploadedFiles?: (files: UploadedFile[]) => void;
   onButtonClick?: () => void;
   onInputChange?: (value: string) => void;
 }
@@ -12,6 +14,7 @@ interface ComponentRendererProps {
 const ComponentRenderer = ({
   message,
   onMenuOptionSelect,
+  onUpdateUploadedFiles,
 }: ComponentRendererProps) => {
   const renderComponent = (componentType: ComponentType, content: any) => {
     switch (componentType) {
@@ -25,7 +28,7 @@ const ComponentRenderer = ({
         ) : null;
 
       case "DATA_UPLOAD":
-        return <Uploader />;
+        return <Uploader onUpdateUploadedFiles={onUpdateUploadedFiles} />;
 
       case "BUILD_RESULT":
         return (

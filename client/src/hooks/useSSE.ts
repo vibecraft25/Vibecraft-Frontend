@@ -1,19 +1,16 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import {
-  ThreadState,
-  ProcessStatus,
-  InputType,
-  SSEConnectionState,
-} from "../types/session";
-import { getNextProcessStatus } from "@/utils/processStatus";
+import { ThreadState, InputType, SSEConnectionState } from "@/types/session";
+import { getNextProcessStatus, ProcessStatus } from "@/utils/processStatus";
 import {
   ApiEndpoint,
   API_ENDPOINTS,
   getApiResponse,
+  fetchTableMetadata,
 } from "@/utils/apiEndpoints";
 import { readStream, StreamSSEEvent } from "@/utils/streamProcessor";
-import { generateId } from "@/utils/chatStorage";
+import { generateId } from "@/stores/chatStore";
 import { useChatStore } from "@/stores/chatStore";
+import { useChannel } from "./useChannel";
 
 // Export types
 export type { StreamSSEEvent } from "@/utils/streamProcessor";
@@ -22,8 +19,26 @@ export type { StreamSSEEvent } from "@/utils/streamProcessor";
 export type ComponentType =
   | "MENU"
   | "DATA_UPLOAD"
+  | "DATA_TABLE"
+  | "DATA_VISUALIZE"
   | "BUILD_RESULT"
   | "DEPLOY_STATUS";
+
+// 테이블 메타데이터 타입
+export interface TableMetadata {
+  created_at: string;
+  column_mapping: Record<string, string>; // "상호명" -> "Store_Name"
+}
+
+// 테이블 데이터 타입
+export interface TableData {
+  title: string; // "📊 최종 데이터프레임 요약:"
+  rawHeaders: string[]; // ["상호명", "주소_동", "위도", ...]
+  englishHeaders: string[]; // ["Store_Name", "Address_Dong", ...]
+  rows: string[][]; // 파싱된 데이터 행들
+  metadata: TableMetadata; // 메타데이터
+  threadId: string; // 어떤 thread의 데이터인지
+}
 
 // SSE 메시지 타입
 export interface SSEMessage {
@@ -31,6 +46,7 @@ export interface SSEMessage {
   threadId: string;
   timestamp?: Date;
   type: "human" | "ai";
+  // content: string | string[] | TableData;
   content: string | string[];
   componentType?: ComponentType;
 }
@@ -65,10 +81,10 @@ export interface UseSSEReturn {
   ) => void;
   setNextProcessStatus: () => void;
   sendMessage: (message: string) => Promise<boolean>;
-  sendOptionMessage: (
-    message: string,
-    apiEndpoint: ApiEndpoint
-  ) => Promise<boolean>;
+  // sendOptionMessage: (
+  //   message: string,
+  //   apiEndpoint: ApiEndpoint
+  // ) => Promise<boolean>;
   startNewChat: () => void;
   fetchProcess: (status: ProcessStatus) => void;
 }
@@ -76,19 +92,23 @@ export interface UseSSEReturn {
 export const useSSE = (config: UseSSEConfig): UseSSEReturn => {
   const { serverUrl, threadId: providedThreadId, autoRestore = true } = config;
 
-  // Zustand store 상태 - 채널 중심 구조
-  const chatItems = useChatStore((state) => state.chatItems);
-  const currentChannelId = useChatStore((state) => state.currentChannelId);
-
-  // Store 액션들
+  // 채널 관리 훅
   const {
-    loadInitialData,
-    switchChannel: switchCurrentChannel,
-    storeChatChannel,
+    chatItems,
+    currentChannelId,
+    lastThreadId,
+    createNewChannel,
+    switchChannel,
+    updateChannel,
+    // storeChatChannel,
     updateChatChannel,
     startNewChat: storeStartNewChat,
     saveCurrentMessages,
-  } = useChatStore();
+    loadChannelMessages,
+  } = useChannel();
+
+  // 초기 데이터 로드만 직접 사용
+  const { loadInitialData } = useChatStore();
 
   // 로컬 상태 (UI 관련)
   const [threadState, setThreadState] = useState<ThreadState>("IDLE");
@@ -97,14 +117,19 @@ export const useSSE = (config: UseSSEConfig): UseSSEReturn => {
   const [inputType] = useState<InputType>("TEXT");
   const [processStatus, setProcessStatus] = useState<ProcessStatus>("TOPIC");
 
+  // 테이블 데이터 임시 저장 상태
+  const [pendingTableData, setPendingTableData] = useState<string[] | null>(
+    null
+  );
+
+  // 응답 버퍼 - 응답 임시 저장 후 thread ID update 와 함께 messageBuffer로 전달
+  const [responseBuffer, setResponseBuffer] = useState<SSEMessage[]>([]);
   // 메시지 버퍼 - 임시로 저장 (채팅 채널이 변경되기 전까지 메시지를 유지)
   const [messageBuffer, setMessageBuffer] = useState<SSEMessage[]>([]);
 
   // threadId는 개별 메시지용, channelId는 전체 세션용으로 분리
   const [currentThreadId, setCurrentThreadId] = useState<string | undefined>();
-  const [channelId, setChannelId] = useState<string | undefined>(
-    providedThreadId || currentChannelId
-  );
+  const [channelId, setChannelId] = useState<string>();
 
   // 메시지 추가 헬퍼 - messageBuffer에 추가 후 채널 변경시 저장
   const addMessage = useCallback(
@@ -117,20 +142,40 @@ export const useSSE = (config: UseSSEConfig): UseSSEReturn => {
 
       const myMessage: SSEMessage = {
         messageId: generateId(),
-        threadId: currentThreadId || channelId || "", // 현재 활성 스레드 또는 채널 ID 사용
+        threadId: currentThreadId || "", // 현재 활성 스레드 ID 사용
         content: message,
         timestamp: new Date(),
         componentType,
         type: type,
       };
-
-      // messageBuffer에 추가 (채팅 진행 중 임시 저장)
       setMessageBuffer((prev) => [...prev, myMessage]);
     },
     [currentThreadId, channelId]
   );
 
+  const addResponseMessage = useCallback(
+    (
+      message: string | string[],
+      type: "human" | "ai",
+      componentType?: ComponentType
+    ) => {
+      console.log("📥 메시지 추가:", message);
+
+      const myMessage: SSEMessage = {
+        messageId: generateId(),
+        threadId: currentThreadId || "", // 현재 활성 스레드 ID 사용
+        content: message,
+        timestamp: new Date(),
+        componentType,
+        type: type,
+      };
+      setResponseBuffer((prev) => [...prev, myMessage]);
+    },
+    [currentThreadId, channelId]
+  );
+
   const setNextProcessStatus = useCallback(() => {
+    debugger;
     // 다음 프로세스 단계로 자동 진행
     const nextProcess = getNextProcessStatus(processStatus);
     if (nextProcess !== processStatus) {
@@ -141,112 +186,149 @@ export const useSSE = (config: UseSSEConfig): UseSSEReturn => {
         "→",
         nextProcess
       );
-    }
-  }, [processStatus]);
 
-  const switchChannel = useCallback(
-    (threadId: string) => {
+      // 현재 채널이 있으면 storage 업데이트
+      if (channelId) {
+        updateChatChannel(channelId, "", nextProcess);
+        console.log("💾 채널 프로세스 상태 업데이트:", channelId, nextProcess);
+      }
+    }
+  }, [processStatus, channelId, updateChatChannel]);
+
+  // 채널 변경 핸들러 -> useEffect로 message load, thread Id update
+  const handleSwitchChannel = useCallback(
+    (channelId: string) => {
       setThreadState("IDLE");
-      setChannelId(threadId);
-      switchCurrentChannel(threadId);
+      setChannelId(channelId);
+      switchChannel(channelId);
     },
-    [switchCurrentChannel]
+    [switchChannel]
   );
 
-  // SSE 이벤트 처리
+  // createNewChannel은 useChannel에서 가져옴
+
+  // SSE 이벤트 처리 (channelId 파라미터로 전달)
   const handleSSEEvent = useCallback(
-    async (event: StreamSSEEvent) => {
+    async (event: StreamSSEEvent, activeChannelId: string) => {
       console.log("📨 SSE 이벤트:", event.event, event.data);
+
+      debugger;
 
       switch (event.event) {
         case "ai":
-          await handleAIEvent(event);
+          await handleAIEvent(event, activeChannelId);
           break;
         case "menu":
-          await handleAIEvent(event, "MENU");
+          await handleAIEvent(event, activeChannelId, "MENU");
+          break;
+        case "data":
+          // 테이블 데이터를 임시로 저장만 함
+          setPendingTableData(event.data);
+          console.log("📊 테이블 데이터 임시 저장:", event.data);
           break;
         case "complete":
-          await handleCompleteEvent(event.data, processStatus);
+          await handleCompleteEvent(event.data, processStatus, activeChannelId);
           break;
 
         default:
           console.log("🔄 알 수 없는 이벤트:", event.event, event.data);
       }
     },
-    [channelId, currentThreadId, processStatus]
+    [processStatus]
   );
 
   const handleAIEvent = useCallback(
-    async (_event: StreamSSEEvent, componentType?: ComponentType) => {
+    async (
+      _event: StreamSSEEvent,
+      activeChannelId: string,
+      componentType?: ComponentType
+    ) => {
       // 여러 data 라인을 하나의 텍스트로 결합
       const aiContent = componentType ? _event.data : _event.data.join("\n");
 
-      addMessage(aiContent, "ai", componentType);
+      addResponseMessage(aiContent, "ai", componentType);
 
-      console.log("🤖 AI 응답 누적:", aiContent);
+      console.log("🤖 AI 응답 누적:", aiContent, "channelId:", activeChannelId);
     },
-    [addMessage]
+    [addResponseMessage]
+  );
+
+  // 테이블 데이터 처리 함수
+  const processTableData = useCallback(
+    async (rawTableData: string[], threadId: string) => {
+      try {
+        console.log("📊 테이블 데이터 처리 시작:", threadId);
+
+        // 1. 메타데이터 API 호출
+        const metadata = await fetchTableMetadata(serverUrl, threadId);
+
+        // 2. 원본 데이터 파싱
+        const [title, headerLine, ...dataLines] = rawTableData;
+
+        // 3. 헤더 파싱 (메타데이터 기준)
+        const rawHeaders = Object.keys(metadata.column_mapping);
+
+        // 4. 데이터 행 파싱 (간단한 공백 기반 파싱 - 추후 개선 필요)
+        const rows = dataLines.map((line) => {
+          // 여러 공백을 하나로 합치고 분할
+          const parts = line.trim().split(/\s+/);
+          return parts;
+        });
+
+        // 5. TableData 생성
+        const tableData: TableData = {
+          title,
+          rawHeaders,
+          englishHeaders: rawHeaders.map(
+            (h) => metadata.column_mapping[h] || h
+          ),
+          rows,
+          metadata,
+          threadId,
+        };
+
+        // 6. 응답 메시지로 추가 (나중에 messageBuffer로 이관됨)
+        // addResponseMessage(tableData, "ai", "DATA_TABLE");
+
+        console.log("✅ 테이블 데이터 처리 완료:", tableData);
+      } catch (error) {
+        console.error("❌ 테이블 데이터 처리 실패:", error);
+
+        // 실패시 원본 텍스트로 fallback
+        const fallbackContent = rawTableData.join("\n");
+        addResponseMessage(fallbackContent, "ai");
+      }
+    },
+    [serverUrl, addResponseMessage]
   );
 
   const handleCompleteEvent = useCallback(
-    async (dataLines: string[], processStatus: ProcessStatus) => {
+    async (
+      dataLines: string[],
+      processStatus: ProcessStatus,
+      activeChannelId: string
+    ) => {
+      if (!activeChannelId) return;
+
+      const newThreadId = dataLines[0];
+      setCurrentThreadId(newThreadId);
+
       switch (processStatus) {
         case "TOPIC":
-          // 주제 설정 완료 complete : Root Thread ID (채널 ID)
-          const rootThreadId = dataLines[0];
-
-          const newChatItem = {
-            rootThreadId: rootThreadId,
-            lastThreadId: rootThreadId,
-            steps: [rootThreadId],
-            processStatus,
-            process: {
-              TOPIC: [rootThreadId],
-              DATA: [],
-              BUILD: [],
-              DEPLOY: [],
-            },
-            submit: `Submit - ${rootThreadId}`,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          };
-
-          storeChatChannel(newChatItem);
-
-          // 새 채널로 전환 (비동기)
-          switchChannel(rootThreadId);
-          setCurrentThreadId(rootThreadId);
-
-          // 주제 설정 시엔 모든 메시지의 threadId를 rootThreadId로 업데이트
-          setMessageBuffer((prev) => [
-            ...prev.map((msg) => ({
-              ...msg,
-              threadId: rootThreadId,
-            })),
-          ]);
+          await updateChannel(activeChannelId, newThreadId, "TOPIC");
 
           break;
         case "DATA":
-          // 데이터 수집 단계에서 새 스레드 ID 생성 및 업로더 컴포넌트 메시지 추가
-          if (dataLines.length > 0) {
-            const dataThreadId = dataLines[0];
-            setCurrentThreadId(dataThreadId);
-            addMessage("DATA_UPLOAD", "ai", "DATA_UPLOAD");
-          }
+          await updateChannel(activeChannelId, newThreadId, "DATA");
+
+          setNextProcessStatus();
+          break;
+        case "DATA_PROCESS":
+          debugger;
           break;
         case "BUILD":
-          // 빌드 단계에서 새 스레드 ID 생성
-          if (dataLines.length > 0) {
-            const buildThreadId = dataLines[0];
-            setCurrentThreadId(buildThreadId);
-          }
           break;
         case "DEPLOY":
-          // 배포 단계에서 새 스레드 ID 생성
-          if (dataLines.length > 0) {
-            const deployThreadId = dataLines[0];
-            setCurrentThreadId(deployThreadId);
-          }
           break;
         default:
           console.warn("알 수 없는 프로세스 상태:", processStatus);
@@ -255,29 +337,27 @@ export const useSSE = (config: UseSSEConfig): UseSSEReturn => {
       setThreadState("READY");
       setConnectionState("CONNECTED");
     },
-    [
-      channelId,
-      currentThreadId,
-      processStatus,
-      storeChatChannel,
-      switchChannel,
-      addMessage,
-    ]
+    [updateChannel, setCurrentThreadId, setNextProcessStatus]
   );
 
-  const getAdditionParams = useCallback(():
-    | Record<string, string>
-    | undefined => {
-    switch (processStatus) {
-      case "TOPIC":
-        break;
-      case "DATA":
-        debugger;
-        return currentThreadId ? { thread_id: currentThreadId } : undefined;
-      default:
-        return {};
-    }
-  }, [processStatus, currentThreadId]);
+  // API 별 파라미터 custom
+  const getAdditionParams = useCallback(
+    (message: string): Record<string, string> | undefined => {
+      switch (processStatus) {
+        case "TOPIC":
+          return { query: message };
+        case "DATA":
+          return currentThreadId ? { thread_id: currentThreadId } : undefined;
+        case "DATA_PROCESS":
+          return currentThreadId
+            ? { thread_id: currentThreadId, query: message }
+            : undefined;
+        default:
+          return {};
+      }
+    },
+    [processStatus, currentThreadId]
+  );
 
   // 메시지 전송
   const sendMessage = useCallback(
@@ -285,45 +365,68 @@ export const useSSE = (config: UseSSEConfig): UseSSEReturn => {
       console.log("📤 메시지 전송 요청:", message);
 
       try {
-        // 사용자 메시지 즉시 표시
-        addMessage(message, "human");
+        let activeChannelId = channelId;
 
-        setThreadState("SENDING");
-
-        // 채널이 없으면 연결 상태로 설정
+        // 채널이 없으면 임시 채널 생성
         if (!channelId) {
           console.log("🆕 새 채널로 메시지 전송...");
+          activeChannelId = `temp-${generateId()}`;
+
+          createNewChannel(activeChannelId, message);
+
+          setChannelId(activeChannelId);
           setConnectionState("CREATING_THREAD");
           setThreadState("CONNECTING");
         }
 
-        // API 호출
-        const response = await getApiResponse(
-          message,
-          serverUrl,
-          API_ENDPOINTS[processStatus],
-          getAdditionParams()
-        );
-
-        if (!response.body) {
-          throw new Error("응답 스트림을 받을 수 없습니다.");
+        if (!activeChannelId) {
+          throw new Error("채팅 생성에 오류가 발생했습니다.");
         }
 
-        // 스트림 처리
-        setThreadState("RECEIVING");
-        setConnectionState("CONNECTED");
+        // 사용자 메시지 즉시 표시
+        addMessage(message, "human");
 
-        await readStream(response, handleSSEEvent);
+        const { isStream, api } = API_ENDPOINTS[processStatus];
 
-        // 기존 채널에서 메시지를 보낸 경우 ChatItem 업데이트
-        if (channelId) {
-          updateChatChannel(channelId, message, processStatus);
-          console.log("📝 기존 채널 ChatItem 업데이트:", channelId);
+        // API 호출
+        const response = await getApiResponse(
+          serverUrl,
+          api,
+          getAdditionParams(message)
+        );
+
+        if (isStream) {
+          setThreadState("SENDING");
+
+          if (!response.body) {
+            throw new Error("응답 스트림을 받을 수 없습니다.");
+          }
+
+          // 스트림 처리
+          setThreadState("RECEIVING");
+          setConnectionState("CONNECTED");
+
+          await readStream(response, (event) =>
+            handleSSEEvent(event, activeChannelId)
+          );
+
+          // 실제 채널에서 메시지를 보낸 경우에만 ChatItem 업데이트 (임시 채널 제외)
+          if (activeChannelId && !activeChannelId.startsWith("temp-")) {
+            updateChatChannel(activeChannelId, message, processStatus);
+            console.log("📝 기존 채널 ChatItem 업데이트:", activeChannelId);
+          }
+        } else {
+          debugger;
         }
 
         return true;
       } catch (error) {
         console.error("❌ 스트림 처리 오류:", error);
+
+        // 에러 발생시 responseBuffer 초기화
+        setResponseBuffer([]);
+        console.log("🗑️ 에러로 인한 응답 버퍼 초기화");
+
         setConnectionState("ERROR");
         setThreadState("ERROR");
         return false;
@@ -336,33 +439,9 @@ export const useSSE = (config: UseSSEConfig): UseSSEReturn => {
       handleSSEEvent,
       addMessage,
       updateChatChannel,
+      createNewChannel,
+      setResponseBuffer,
     ]
-  );
-
-  // 옵션 메시지 전송
-  const sendOptionMessage = useCallback(
-    async (message: string, apiEndpoint: ApiEndpoint): Promise<boolean> => {
-      try {
-        setThreadState("RECEIVING");
-
-        const response = await getApiResponse(message, serverUrl, apiEndpoint);
-
-        if (!response.body) {
-          throw new Error("응답 스트림을 받을 수 없습니다.");
-        }
-
-        setConnectionState("CONNECTED");
-        await readStream(response, handleSSEEvent);
-
-        return true;
-      } catch (error) {
-        console.error("❌ 옵션 메시지 처리 오류:", error);
-        setConnectionState("ERROR");
-        setThreadState("ERROR");
-        return false;
-      }
-    },
-    [serverUrl, handleSSEEvent]
   );
 
   // 프로세스 변경
@@ -380,33 +459,40 @@ export const useSSE = (config: UseSSEConfig): UseSSEReturn => {
 
     // 현재 메시지들 저장 후 초기화
     if (channelId && messageBuffer.length > 0) {
-      await saveCurrentMessages(messageBuffer);
+      await saveCurrentMessages(messageBuffer, channelId);
     }
 
     storeStartNewChat();
     setChannelId(undefined);
     setCurrentThreadId(undefined);
     setMessageBuffer([]); // 메시지 버퍼 초기화
+    setResponseBuffer([]); // 응답 버퍼 초기화
+    setPendingTableData(null); // 보류 중인 테이블 데이터 초기화
     setProcessStatus("TOPIC");
     setThreadState("IDLE");
     setConnectionState("DISCONNECTED");
-  }, [storeStartNewChat, channelId, messageBuffer, saveCurrentMessages]);
+  }, [
+    storeStartNewChat,
+    channelId,
+    messageBuffer,
+    saveCurrentMessages,
+    setResponseBuffer,
+    setPendingTableData,
+  ]);
 
   // currentChannelId 변경시 store와 동기화 및 채널 메시지 로드
   useEffect(() => {
-    const loadChannelMessages = async () => {
+    const setStatueSynchronize = async () => {
       if (currentChannelId) {
-        if (channelId && channelId !== currentChannelId) {
+        if (currentChannelId && channelId && channelId !== currentChannelId) {
           // 이전 채널 메시지 저장
-          if (currentChannelId && messageBuffer.length > 0) {
-            await saveCurrentMessages(messageBuffer);
+          if (messageBuffer.length > 0) {
+            await saveCurrentMessages(messageBuffer, channelId);
           }
         }
 
-        // 채널의 메시지 로드
-        const messages = await useChatStore
-          .getState()
-          .loadChannelMessages(currentChannelId);
+        // 실제 채널의 메시지 로드
+        const messages = await loadChannelMessages(currentChannelId);
         setMessageBuffer(messages);
 
         console.log(
@@ -418,8 +504,43 @@ export const useSSE = (config: UseSSEConfig): UseSSEReturn => {
       }
     };
 
-    loadChannelMessages();
+    setStatueSynchronize();
   }, [currentChannelId]);
+
+  // currentThreadId 변경시 responseBuffer를 messageBuffer로 이관
+  useEffect(() => {
+    if (currentThreadId && responseBuffer.length > 0) {
+      console.log(
+        "📬 응답 버퍼를 메시지 버퍼로 이관 시작:",
+        responseBuffer.length,
+        "개"
+      );
+
+      // responseBuffer의 모든 메시지를 messageBuffer로 이관 (thread ID 업데이트)
+      setMessageBuffer((prev) => [
+        ...prev,
+        ...responseBuffer.map((msg) => ({
+          ...msg,
+          threadId: currentThreadId, // 새로운 thread ID로 업데이트
+        })),
+      ]);
+
+      // responseBuffer 초기화
+      setResponseBuffer([]);
+
+      console.log("✅ 응답 버퍼를 메시지 버퍼로 이관 완료");
+    }
+  }, [currentThreadId, responseBuffer]);
+
+  // TODO 컬럼 호출 로직 수정 필요
+  // pending Table Data 가 있으면 컬럼 보여줌
+  useEffect(() => {
+    // 보류 중인 테이블 데이터가 있으면 처리
+    if (currentThreadId && pendingTableData) {
+      processTableData(pendingTableData, currentThreadId);
+      setPendingTableData(null); // 처리 후 클리어
+    }
+  }, [pendingTableData]);
 
   // 초기화 - 한 번만 실행
   const initializedRef = useRef(false);
@@ -451,7 +572,7 @@ export const useSSE = (config: UseSSEConfig): UseSSEReturn => {
       );
 
       // 비동기 저장 시작 (완료를 기다리지 않음)
-      saveCurrentMessages(messageBuffer).finally(() => {
+      saveCurrentMessages(messageBuffer, channelId).finally(() => {
         savingRef.current = false;
       });
     };
@@ -538,7 +659,7 @@ export const useSSE = (config: UseSSEConfig): UseSSEReturn => {
     }
 
     if (providedThreadId) {
-      switchChannel(providedThreadId);
+      handleSwitchChannel(providedThreadId);
       sessionRestoreRef.current = true;
       return;
     }
@@ -559,7 +680,7 @@ export const useSSE = (config: UseSSEConfig): UseSSEReturn => {
     try {
       if (chatItems.length > 0) {
         const latestChannel = chatItems[0];
-        switchChannel(latestChannel.rootThreadId);
+        handleSwitchChannel(latestChannel.channelId);
 
         // lastProcess가 있으면 다음 단계로, 없으면 현재 processStatus 유지
         if (latestChannel.lastProcess) {
@@ -580,7 +701,7 @@ export const useSSE = (config: UseSSEConfig): UseSSEReturn => {
         }
 
         setThreadState("READY");
-        console.log("🔄 최근 채널 복구:", latestChannel.rootThreadId);
+        console.log("🔄 최근 채널 복구:", latestChannel.channelId);
         sessionRestoreRef.current = true;
       } else if (chatItems.length === 0) {
         setThreadState("FIRST_VISIT");
@@ -596,7 +717,7 @@ export const useSSE = (config: UseSSEConfig): UseSSEReturn => {
     providedThreadId,
     autoRestore,
     threadState,
-    switchChannel,
+    handleSwitchChannel,
   ]);
 
   return {
@@ -605,16 +726,16 @@ export const useSSE = (config: UseSSEConfig): UseSSEReturn => {
     connectionState,
     inputType,
     processStatus,
-    channelId: channelId, // 외부에는 여전히 threadId로 제공 (호환성)
+    channelId: channelId,
     messages: messageBuffer,
     chatItems,
 
     // 액션
-    switchChannel,
+    switchChannel: handleSwitchChannel,
     addMessage,
     setNextProcessStatus,
     sendMessage,
-    sendOptionMessage,
+    // sendOptionMessage,
     startNewChat,
     fetchProcess,
   };

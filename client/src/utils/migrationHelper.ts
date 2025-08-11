@@ -4,7 +4,7 @@
  */
 
 import * as MessageStorage from './messageStorage';
-import { saveThreadData, ThreadData, ChatItem } from './chatStorage';
+import { ChatItem } from '@/stores/chatStore';
 
 const MIGRATION_KEY = 'vibecraft_migration_completed';
 const OLD_STORE_KEY = 'vibecraft-chat-store';
@@ -71,12 +71,10 @@ export const migrateData = async (): Promise<boolean> => {
     const { chatItems, messages } = oldData.state;
 
     // 3. ChatItems를 localStorage로 마이그레이션
-    const newThreadData: ThreadData = {
-      history: chatItems
-    };
-
+    const threadData = { history: chatItems };
+    
     console.log(`📋 ChatItems 마이그레이션: ${chatItems.length}개`);
-    saveThreadData(newThreadData);
+    localStorage.setItem('vibecraft_thread', JSON.stringify(threadData));
 
     // 4. Messages를 IndexedDB로 마이그레이션
     if (messages && typeof messages === 'object') {
@@ -198,7 +196,7 @@ export const printStorageInfo = async () => {
   // IndexedDB 정보
   const stats = await MessageStorage.getStorageStats();
   if (stats) {
-    console.log('📨 메시지 스레드:', stats.totalThreads, '개');
+    console.log('📨 메시지 채널:', stats.totalchannels, '개');
     console.log('📨 전체 메시지:', stats.totalMessages, '개');
     console.log('📨 평균 메시지:', stats.averageMessages, '개/스레드');
   }

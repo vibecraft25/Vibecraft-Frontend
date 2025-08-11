@@ -1,9 +1,16 @@
-import { ProcessStatus } from "@/types/session";
+// 프로젝트 진행 상태
+export type ProcessStatus =
+  | "TOPIC" // 주제 입력 단계
+  | "DATA" // 데이터 수집 단계
+  | "DATA_PROCESS" // 데이터 가공 단계
+  | "BUILD" // 대시보드 구축 단계
+  | "DEPLOY"; // 배포 단계
 
 // ProcessStatus 순서 유틸리티
 export const PROCESS_STATUS_ORDER: ProcessStatus[] = [
   "TOPIC",
-  "DATA", 
+  "DATA",
+  "DATA_PROCESS",
   "BUILD",
   "DEPLOY",
 ];
@@ -47,7 +54,7 @@ export const isProcessStepClickable = (
 ): boolean => {
   const stepIndex = PROCESS_STATUS_ORDER.indexOf(stepStatus);
   const currentIndex = PROCESS_STATUS_ORDER.indexOf(currentStatus);
-  
+
   // 현재 단계 또는 이전 완료된 단계만 클릭 가능
   return stepIndex <= currentIndex;
 };

@@ -25,7 +25,7 @@ const Chattings = ({
     console.log("💬 Chattings.tsx chatItems 상태:", {
       length: chatItems.length,
       items: chatItems.map((item) => ({
-        id: item.rootThreadId,
+        id: item.channelId,
         submit: item.submit,
       })),
     });
@@ -67,15 +67,15 @@ const Chattings = ({
           <div className="space-y-1">
             {chatItems.map((item) => (
               <div
-                key={item.rootThreadId}
+                key={item.channelId}
                 className={`cursor-pointer transition-all duration-200 rounded-lg mx-3 px-3 py-3 group hover:bg-gray-100 ${
-                  item.rootThreadId === channelId
+                  item.channelId === channelId
                     ? "bg-gradient-to-r from-purple-50 to-blue-50 border-l-3 border-purple-500"
                     : "border border-gray-100 bg-gray-50"
                 }`}
                 onClick={() => {
-                  console.log("📱 채팅 항목 클릭:", item.rootThreadId);
-                  switchChannel(item.rootThreadId);
+                  console.log("📱 채팅 항목 클릭:", item.channelId);
+                  switchChannel(item.channelId);
                 }}
               >
                 <div className="flex items-start justify-between">
@@ -83,9 +83,9 @@ const Chattings = ({
                     {/* 제목 */}
                     <div className="mb-2">
                       <Text
-                        strong={item.rootThreadId === channelId}
+                        strong={item.channelId === channelId}
                         className={`text-sm line-clamp-2 ${
-                          item.rootThreadId === channelId
+                          item.channelId === channelId
                             ? "text-purple-700"
                             : "text-gray-800"
                         }`}
