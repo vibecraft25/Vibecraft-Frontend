@@ -2,6 +2,7 @@ import Menu, { MenuOption } from "./Menu";
 import { SSEMessage, ComponentType } from "@/hooks/useSSE";
 import Uploader from "./Uploader";
 import { UploadedFile } from "@/types/upload";
+import ColumnTable from "./ColumnTable";
 
 interface ComponentRendererProps {
   message: SSEMessage;
@@ -29,6 +30,12 @@ const ComponentRenderer = ({
 
       case "DATA_UPLOAD":
         return <Uploader onUpdateUploadedFiles={onUpdateUploadedFiles} />;
+
+      case "DATA_TABLE":
+        return <ColumnTable tableStringify={content} />;
+
+      case "DATA_VISUALIZE":
+        return <>DATA_VISUALIZE</>;
 
       case "BUILD_RESULT":
         return (

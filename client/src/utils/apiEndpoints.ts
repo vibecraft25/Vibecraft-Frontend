@@ -96,7 +96,7 @@ export const getStreamHeaders = (): HeadersInit => ({
 });
 
 // API 생성 함수
-export const getApiResponse = (
+export const getStreamApiResponse = (
   serverUrl: string,
   endpoint: ApiEndpoint,
   additionalParams?: Record<string, string>
@@ -114,15 +114,20 @@ export const getApiResponse = (
   });
 };
 
-// 테이블 메타데이터 API 호출 함수
-export const fetchTableMetadata = async (
+// API 생성 함수
+export const getApiResponse = async (
   serverUrl: string,
-  threadId: string
+  endpoint: ApiEndpoint,
+  additionalParams?: Record<string, string>
 ) => {
-  const url = `${serverUrl}/contents/meta?thread_id=${threadId}`;
-  console.log("📡 메타데이터 API 호출:", url);
+  const params = new URLSearchParams({
+    ...endpoint.params,
+    ...additionalParams,
+  });
 
-  const response = await fetch(url, {
+  const apiUrl = `${serverUrl}${endpoint.path}?${params.toString()}`;
+
+  const response = await fetch(apiUrl, {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
@@ -130,7 +135,7 @@ export const fetchTableMetadata = async (
   });
 
   if (!response.ok) {
-    throw new Error(`메타데이터 API 호출 실패: ${response.status}`);
+    throw new Error(`API 호출 실패: ${response.status}`);
   }
 
   return response.json();

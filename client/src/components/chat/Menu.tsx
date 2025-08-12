@@ -21,22 +21,6 @@ const Menu = ({ menuList, onOptionSelect, prev, className }: MenuProps) => {
   // TODO : 호출 된 값이 있으면 isSubmit으로 버튼 비활성화
   const [isSumbit, setIsSubmit] = useState<boolean>(prev === true);
 
-  // const isOptionsMenu =
-  //   menuList.length > 0 && menuList[0].includes("[Options]");
-
-  // if (isOptionsMenu) {
-  // }
-
-  // return (
-  //   <div className={className}>
-  //     {menuList.map((menu: string, index: number) => (
-  //       <div key={`ai-menuitem-${index}`} className="menu-item mb-2">
-  //         <Text className="menu-text text-gray-700">{menu}</Text>
-  //       </div>
-  //     ))}
-  //   </div>
-  // );
-
   const options: MenuOption[] = [];
 
   menuList.forEach((item, index) => {
