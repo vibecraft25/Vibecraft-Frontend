@@ -16,7 +16,7 @@ interface ChannelState {
   currentChannelId: string | null;
 
   // Actions
-  createChannel: (name: string, description?: string) => Promise<string>;
+  createChannel: (name: string, description: string) => Promise<string>;
   switchChannel: (channelId: string) => Promise<void>;
   deleteChannel: (channelId: string) => Promise<void>;
   updateChannelStatus: (
@@ -116,10 +116,6 @@ export const useChannelStore = create<ChannelState>()(
             })),
             currentChannelId: channelId,
           }));
-
-          // Save active channel preference
-          const config = { activeChannelId: channelId };
-          localStorage.setItem("vibecraft_config", JSON.stringify(config));
         } catch (error) {
           console.error("Failed to switch channel:", error);
           throw error;
@@ -215,45 +211,27 @@ export const useChannelStore = create<ChannelState>()(
 
         try {
           // Get channel summaries from DataService
-          const summaries = DataService.getAllChannelSummaries();
-          const channels: Channel[] = summaries.map((summary) => ({
+          const storedChannels = DataService.getAllChannels();
+          const channels: Channel[] = storedChannels.map((storedChannel) => ({
             meta: {
-              channelId: summary.channelId,
-              channelName: summary.name,
-              currentStatus: summary.status as DashboardStatus,
-              lastStatus: summary.status as DashboardStatus,
+              channelId: storedChannel.channelId,
+              channelName: storedChannel.name,
+              description: storedChannel.description,
+              currentStatus: storedChannel.status as DashboardStatus,
+              lastStatus: storedChannel.status as DashboardStatus,
               threadStatus: "IDLE",
+              threadId: storedChannel.threadId,
               createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString(),
-              lastActivity: summary.lastActivity,
-              isCompleted: summary.isCompleted,
+              lastActivity: storedChannel.lastActivity,
+              isCompleted: storedChannel.isCompleted,
             },
             isActive: false,
           }));
 
           set({ channels });
 
-          // Restore active channel
-          const config = localStorage.getItem("vibecraft_config");
-          let activeChannelId = null;
-
-          if (config) {
-            try {
-              const parsedConfig = JSON.parse(config);
-              activeChannelId = parsedConfig.activeChannelId;
-            } catch (e) {
-              console.warn("Failed to parse config:", e);
-            }
-          }
-
-          if (
-            activeChannelId &&
-            channels.some((c) => c.meta.channelId === activeChannelId)
-          ) {
-            await get().switchChannel(activeChannelId);
-          } else if (channels.length > 0) {
-            await get().switchChannel(channels[0].meta.channelId);
-          }
+          // await get().switchChannel(channels[0].meta.channelId);
         } catch (error) {
           console.error("Failed to load channels:", error);
           throw error;

@@ -50,7 +50,7 @@ export const useChannel = (options: UseChannelOptions = {}) => {
   }, [channelState.currentChannel?.meta.currentStatus, options.onStatusChange]);
 
   const createNewChannel = useCallback(
-    async (name: string, description?: string) => {
+    async (name: string, description: string) => {
       try {
         const channelId = await createChannel(name, description);
 

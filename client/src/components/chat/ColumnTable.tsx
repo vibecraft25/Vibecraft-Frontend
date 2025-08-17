@@ -1,4 +1,5 @@
-import { Table } from "antd";
+import { Table, Checkbox } from "antd";
+import { useState, useEffect } from "react";
 
 interface ColumnTableProps {
   tableData: {
@@ -6,11 +7,32 @@ interface ColumnTableProps {
     columns: string[];
     rows: string[][];
   };
+  selectedColumns?: string[];
+  setSelectedColumns?: (columns: string[]) => void;
 }
 
-const ColumnTable = ({ tableData }: ColumnTableProps) => {
+const ColumnTable = ({ tableData, selectedColumns = [], setSelectedColumns }: ColumnTableProps) => {
+  // 컬럼 선택 핸들러
+  const handleColumnSelect = (columnName: string, checked: boolean) => {
+    if (!setSelectedColumns) return;
+    
+    if (checked) {
+      setSelectedColumns([...selectedColumns, columnName]);
+    } else {
+      setSelectedColumns(selectedColumns.filter(col => col !== columnName));
+    }
+  };
+
   const columns = tableData.columns.map((col, index) => ({
-    title: col,
+    title: (
+      <div className="flex items-center gap-2">
+        <Checkbox
+          checked={selectedColumns.includes(col)}
+          onChange={(e) => handleColumnSelect(col, e.target.checked)}
+        />
+        <span>{col}</span>
+      </div>
+    ),
     dataIndex: col,
     key: col,
     render: (text: any) => String(text || ""),
@@ -35,6 +57,7 @@ const ColumnTable = ({ tableData }: ColumnTableProps) => {
           dataSource={dataSource}
           scroll={{ x: true }}
           size="small"
+          pagination={false}
         />
       </div>
     </div>

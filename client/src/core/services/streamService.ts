@@ -12,11 +12,12 @@ export interface StreamEventHandler {
   onAIEvent?: (data: string, id?: string) => void;
   onMenuEvent?: (data: string, id?: string) => void;
   onDataEvent?: (data: string, id?: string) => void;
+  oErrorEvent?: (data: string, id?: string) => void;
   onCompleteEvent?: (data: string, id?: string) => void;
 }
 
 export interface ProcessedDataEvent {
-  type: 'table' | 'unknown';
+  type: "table" | "unknown";
   componentType?: ComponentType;
   data: any;
 }
@@ -51,15 +52,31 @@ export class StreamService {
           break;
 
         case "menu":
-          handlers.onMenuEvent?.(JSON.stringify(event.data), crypto.randomUUID());
+          handlers.onMenuEvent?.(
+            JSON.stringify(event.data),
+            crypto.randomUUID()
+          );
           break;
 
         case "data":
-          handlers.onDataEvent?.(JSON.stringify(event.data), crypto.randomUUID());
+          handlers.onDataEvent?.(
+            JSON.stringify(event.data),
+            crypto.randomUUID()
+          );
+          break;
+
+        case "error":
+          handlers.oErrorEvent?.(
+            JSON.stringify(event.data),
+            crypto.randomUUID()
+          );
           break;
 
         case "complete":
-          handlers.onCompleteEvent?.(JSON.stringify(event.data), crypto.randomUUID());
+          handlers.onCompleteEvent?.(
+            JSON.stringify(event.data),
+            crypto.randomUUID()
+          );
           break;
 
         default:
@@ -101,19 +118,19 @@ export class StreamService {
    */
   static processDataEvent(data: string): ProcessedDataEvent {
     const dataInfo = MessageService.parseJsonSafely(data);
-    
+
     if (!Array.isArray(dataInfo) || dataInfo.length === 0) {
       return {
-        type: 'unknown',
-        data: dataInfo
+        type: "unknown",
+        data: dataInfo,
       };
     }
 
     // 단순 컬럼 정보 (현재 미사용)
     if (dataInfo.length === 1) {
       return {
-        type: 'unknown',
-        data: dataInfo
+        type: "unknown",
+        data: dataInfo,
       };
     }
 
@@ -121,28 +138,30 @@ export class StreamService {
     if (dataInfo.length >= 2) {
       const title = dataInfo[0];
       const headerString = dataInfo[1];
-      
+
       // 컬럼 파싱
       const columns = this.parseColumns(headerString);
-      
+
       // 데이터 행 파싱
       const dataRows = dataInfo.slice(2);
-      const rows = dataRows.map(rowString => this.parseRow(rowString, columns.length));
+      const rows = dataRows.map((rowString) =>
+        this.parseRow(rowString, columns.length)
+      );
 
       return {
-        type: 'table',
+        type: "table",
         componentType: ComponentType.DATA_TABLE,
         data: {
           title: title || "데이터 테이블",
           columns,
-          rows
-        }
+          rows,
+        },
       };
     }
 
     return {
-      type: 'unknown',
-      data: dataInfo
+      type: "unknown",
+      data: dataInfo,
     };
   }
 
@@ -151,7 +170,7 @@ export class StreamService {
    */
   private static parseColumns(headerString: string): string[] {
     if (headerString.includes(",")) {
-      return headerString.split(",").map(col => col.trim());
+      return headerString.split(",").map((col) => col.trim());
     }
     return headerString.trim().split(/\s+/);
   }
@@ -159,9 +178,12 @@ export class StreamService {
   /**
    * Parse data row with proper column alignment
    */
-  private static parseRow(rowString: string, expectedColumns: number): string[] {
+  private static parseRow(
+    rowString: string,
+    expectedColumns: number
+  ): string[] {
     if (rowString.includes(",")) {
-      return rowString.split(",").map(cell => cell.trim());
+      return rowString.split(",").map((cell) => cell.trim());
     }
 
     // 정규식을 사용한 정교한 파싱
@@ -175,10 +197,7 @@ export class StreamService {
 
     // 예상 컬럼 수와 맞지 않으면 간단한 공백 분리로 폴백
     if (parts.length !== expectedColumns) {
-      return rowString
-        .trim()
-        .split(/\s+/)
-        .slice(0, expectedColumns);
+      return rowString.trim().split(/\s+/).slice(0, expectedColumns);
     }
 
     return parts;
@@ -207,11 +226,30 @@ export class StreamService {
   }
 
   /**
+   * Process workflow visualization response
+   */
+  static processWorkflowVisualizationResponse(response: any): any[] {
+    if (
+      !response?.recommendations ||
+      !Array.isArray(response.recommendations)
+    ) {
+      return [];
+    }
+
+    return response.recommendations.map((rec: any) => ({
+      visualization_type: rec.visualization_type,
+      confidence: rec.confidence,
+      reason: rec.reason,
+      data_requirements: rec.data_requirements || [],
+      benefits: rec.benefits || [],
+      title: "워크플로우 비주얼라이제이션 추천",
+    }));
+  }
+
+  /**
    * Validate streaming event format
    */
   static validateStreamEvent(event: any): boolean {
-    return event && 
-           typeof event.event === 'string' && 
-           event.data !== undefined;
+    return event && typeof event.event === "string" && event.data !== undefined;
   }
 }

@@ -9,10 +9,11 @@ export type {
   MenuComponentData,
   DataUploadComponentData,
   DataTableComponentData,
-  DataVisualizeComponentData,
   CodeBlockComponentData,
   PageViewerComponentData,
   ComponentData,
+  VisualizationRecommendation,
+  VisualizationType,
 } from "./chat";
 
 export { ComponentType } from "./chat";

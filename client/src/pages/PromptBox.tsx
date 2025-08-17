@@ -2,15 +2,27 @@ import React, { useState, useCallback } from "react";
 import { Input, Button, message as antMessage } from "antd";
 import { Send, Sparkles, Loader2 } from "lucide-react";
 
-import { useSSE } from "@/hooks";
-import { ChannelMeta, useChannelStore, useChatActions } from "@/core";
+import {
+  ChannelMeta,
+  DashboardStatus,
+  StreamEndpoint,
+  useChannelStore,
+} from "@/core";
 import { PromptBoxProcessMessage } from "@/message/prompt";
 
 interface PromptBoxProps {
   channelMeta: ChannelMeta;
+  sendMessage: (
+    message: string,
+    status: DashboardStatus,
+    props?: {
+      endpoint?: StreamEndpoint;
+      additionalParams?: Record<string, string>;
+    }
+  ) => Promise<boolean>;
 }
 
-const PromptBox = ({ channelMeta }: PromptBoxProps) => {
+const PromptBox = ({ channelMeta, sendMessage }: PromptBoxProps) => {
   const threadState = channelMeta.threadStatus;
 
   const disabled =
@@ -20,7 +32,6 @@ const PromptBox = ({ channelMeta }: PromptBoxProps) => {
     threadState === "RECONNECTING";
 
   const { updateChannelMeta } = useChannelStore();
-  const { sendMessage } = useSSE();
 
   const [inputText, setInputText] = useState("");
 
@@ -44,7 +55,7 @@ const PromptBox = ({ channelMeta }: PromptBoxProps) => {
           return {};
       }
     },
-    [channelMeta.lastStatus]
+    [channelMeta]
   );
 
   const handleSubmit = useCallback(async () => {

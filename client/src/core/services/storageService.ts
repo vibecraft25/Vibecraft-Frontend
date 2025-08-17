@@ -24,7 +24,7 @@ export class StorageService {
    */
   static saveChannelMeta(channelMeta: ChannelMeta): void {
     try {
-      const stored = localStorage.getItem(this.STOARGE) || '{}';
+      const stored = localStorage.getItem(this.STOARGE) || "{}";
       const channels = JSON.parse(stored);
       channels[channelMeta.channelId] = channelMeta;
       localStorage.setItem(this.STOARGE, JSON.stringify(channels));
@@ -39,7 +39,7 @@ export class StorageService {
    */
   static loadChannelMeta(channelId: string): ChannelMeta | null {
     try {
-      const stored = localStorage.getItem(this.STOARGE) || '{}';
+      const stored = localStorage.getItem(this.STOARGE) || "{}";
       const channels = JSON.parse(stored);
       return channels[channelId] || null;
     } catch (error) {
@@ -53,7 +53,7 @@ export class StorageService {
    */
   static deleteChannelMeta(channelId: string): void {
     try {
-      const stored = localStorage.getItem(this.STOARGE) || '{}';
+      const stored = localStorage.getItem(this.STOARGE) || "{}";
       const channels = JSON.parse(stored);
       delete channels[channelId];
       localStorage.setItem(this.STOARGE, JSON.stringify(channels));
@@ -67,7 +67,7 @@ export class StorageService {
    */
   static getAllChannelIds(): string[] {
     try {
-      const stored = localStorage.getItem(this.STOARGE) || '{}';
+      const stored = localStorage.getItem(this.STOARGE) || "{}";
       const channels = JSON.parse(stored);
       return Object.keys(channels);
     } catch (error) {
@@ -178,44 +178,6 @@ export class StorageService {
   }
 
   // ===============================
-  // App State Management
-  // ===============================
-
-  /**
-   * Save active channel ID
-   */
-  static saveActiveChannelId(channelId: string): void {
-    localStorage.setItem("vibecraft_active_channel", channelId);
-  }
-
-  /**
-   * Load active channel ID
-   */
-  static loadActiveChannelId(): string | null {
-    return localStorage.getItem("vibecraft_active_channel");
-  }
-
-  /**
-   * Save app configuration
-   */
-  static saveAppConfig(config: Record<string, any>): void {
-    localStorage.setItem("vibecraft_config", JSON.stringify(config));
-  }
-
-  /**
-   * Load app configuration
-   */
-  static loadAppConfig(): Record<string, any> | null {
-    try {
-      const config = localStorage.getItem("vibecraft_config");
-      return config ? JSON.parse(config) : null;
-    } catch (error) {
-      console.error("Failed to load app config:", error);
-      return null;
-    }
-  }
-
-  // ===============================
   // Cleanup and Maintenance
   // ===============================
 
@@ -226,8 +188,6 @@ export class StorageService {
     try {
       // Clear localStorage - remove vibecraft keys
       localStorage.removeItem(this.STOARGE);
-      localStorage.removeItem("vibecraft_active_channel");
-      localStorage.removeItem("vibecraft_config");
 
       // Clear IndexedDB
       await clear();

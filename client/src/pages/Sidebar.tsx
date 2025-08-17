@@ -20,7 +20,7 @@ const Sidebar = ({ className = "", channelsProps }: SidebarProps) => {
 
   return (
     <div
-      className={`hidden lg:flex flex-col bg-white border-r border-gray-200 transition-all duration-300 ease-in-out ${
+      className={`hidden lg:flex flex-col bg-white border-r border-gray-200 transition-all duration-300 ease-in-out h-screen ${
         sidebarOpen ? "w-80" : "w-16"
       } ${className}`}
     >
@@ -48,7 +48,7 @@ const Sidebar = ({ className = "", channelsProps }: SidebarProps) => {
       {sidebarOpen ? (
         <>
           {/* Chattings Component */}
-          <div className="flex-1 overflow-hidden">
+          <div className="flex-1 overflow-y-auto">
             <Channels {...channelsProps} />
           </div>
 

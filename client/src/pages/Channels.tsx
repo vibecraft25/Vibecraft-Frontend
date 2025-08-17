@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { Button, Typography, Tooltip } from "antd";
 import { MessageSquare, Plus, Calendar } from "lucide-react";
 
@@ -8,7 +7,7 @@ const { Text } = Typography;
 export interface ChannelsProps {
   className?: string;
   channels: Channel[];
-  createChannel: (name: string, description?: string) => Promise<string>;
+  createChannel: (name: string, description: string) => Promise<string>;
   switchChannel: (channelId: string) => Promise<boolean>;
 }
 
@@ -18,17 +17,6 @@ const Channels = ({
   createChannel,
   switchChannel,
 }: ChannelsProps) => {
-  // Zustand store에서 channels 가져오기 - selector 패턴 사용
-  // const channels = useChatStore((state) => state.channels);
-
-  // channels 로드 상태 디버깅
-  useEffect(() => {
-    console.log("💬 Channels.tsx channels 상태:", {
-      length: channels.length,
-      items: channels,
-    });
-  }, [channels]);
-
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -63,61 +51,63 @@ const Channels = ({
       {/* 채팅 채널 목록 */}
       <div className="flex-1 overflow-y-auto">
         {channels.length > 0 ? (
-          <div className="space-y-1">
-            {channels.map(({ meta, isActive }) => (
-              <div
-                key={meta.channelId}
-                className={`cursor-pointer transition-all duration-200 rounded-lg mx-3 px-3 py-3 group hover:bg-gray-100 ${
-                  isActive
-                    ? "bg-gradient-to-r from-purple-50 to-blue-50 border-l-3 border-purple-500"
-                    : "border border-gray-100 bg-gray-50"
-                }`}
-                onClick={() => {
-                  console.log("📱 채팅 항목 클릭:", meta.channelId);
-                  switchChannel(meta.channelId);
-                }}
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1 min-w-0 pr-2">
-                    {/* 제목 */}
-                    <div className="mb-2">
-                      <Text
-                        strong={isActive}
-                        className={`text-sm line-clamp-2 ${
-                          isActive ? "text-purple-700" : "text-gray-800"
-                        }`}
-                        title={meta.description}
-                      >
-                        {meta.description}
-                      </Text>
+          <div className="py-4 space-y-2">
+            {channels.map(({ meta, isActive }) => {
+              return (
+                <div
+                  key={meta.channelId}
+                  className={`cursor-pointer transition-all duration-200 rounded-lg mx-3 px-3 py-3 group hover:bg-gray-100 ${
+                    isActive
+                      ? "bg-gradient-to-r from-purple-50 to-blue-50 border-l-3 border-purple-500"
+                      : "border border-gray-100 bg-gray-50"
+                  }`}
+                  onClick={() => {
+                    console.log("📱 채팅 항목 클릭:", meta.channelId);
+                    switchChannel(meta.channelId);
+                  }}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 min-w-0 pr-2">
+                      {/* 제목 */}
+                      <div className="mb-2">
+                        <Text
+                          strong={isActive}
+                          className={`text-sm line-clamp-2 ${
+                            isActive ? "text-purple-700" : "text-gray-800"
+                          }`}
+                          title={meta.description}
+                        >
+                          {meta.description}
+                        </Text>
+                      </div>
+
+                      {/* 날짜 */}
+                      <div className="flex items-center text-xs text-gray-400">
+                        <Calendar className="w-3 h-3 mr-1 flex-shrink-0" />
+                        <span>{formatDate(meta.updatedAt)}</span>
+                      </div>
                     </div>
 
-                    {/* 날짜 */}
-                    <div className="flex items-center text-xs text-gray-400">
-                      <Calendar className="w-3 h-3 mr-1 flex-shrink-0" />
-                      <span>{formatDate(meta.updatedAt)}</span>
+                    {/* 더보기 버튼 */}
+                    <div className="flex-shrink-0">
+                      <Tooltip title="더보기">
+                        <Button
+                          type="text"
+                          size="small"
+                          className="opacity-0 group-hover:opacity-100 transition-opacity w-6 h-6 p-0 flex items-center justify-center"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            // 추후 드롭다운 메뉴 구현
+                          }}
+                        >
+                          •••
+                        </Button>
+                      </Tooltip>
                     </div>
-                  </div>
-
-                  {/* 더보기 버튼 */}
-                  <div className="flex-shrink-0">
-                    <Tooltip title="더보기">
-                      <Button
-                        type="text"
-                        size="small"
-                        className="opacity-0 group-hover:opacity-100 transition-opacity w-6 h-6 p-0 flex items-center justify-center"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          // 추후 드롭다운 메뉴 구현
-                        }}
-                      >
-                        •••
-                      </Button>
-                    </Tooltip>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <div className="p-8 text-center">

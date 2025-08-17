@@ -31,6 +31,11 @@ interface SSEState {
   currentEventType?: string;
   currentMessageId?: string;
 
+  // Error state management
+  hasError: boolean;
+  errorType?: "stream" | "api" | "connection";
+  streamError?: string;
+
   // Configuration
   config?: SSEConfig;
 
@@ -51,6 +56,13 @@ interface SSEState {
   setError: (error?: string) => void;
   handleMessage: (message: SSEMessage) => void;
 
+  // Error management
+  clearError: () => void;
+  handleStreamError: (
+    error: string,
+    type?: "stream" | "api" | "connection"
+  ) => void;
+
   // Event handlers
   handleAIEvent: (data: string, id?: string) => void;
   handleMenuEvent: (data: string, id?: string) => void;
@@ -70,6 +82,7 @@ export const useSSEStore = create<SSEState>()(
       isConnected: false,
       reconnectAttempts: 0,
       isStreaming: false,
+      hasError: false,
 
       // Connect to SSE endpoint
       connect: (config) => {
@@ -189,6 +202,15 @@ export const useSSEStore = create<SSEState>()(
                   );
                   get().handleMessage(sseMessage);
                 },
+                oErrorEvent: (data, _id) => {
+                  const sseMessage = MessageService.transformSSEEvent(
+                    "error",
+                    data,
+                    _id
+                  );
+                  get().handleMessage(sseMessage);
+                  throw new Error("Stream Response ERROR");
+                },
                 onCompleteEvent: (data, _id) => {
                   const sseMessage = MessageService.transformSSEEvent(
                     "complete",
@@ -201,12 +223,42 @@ export const useSSEStore = create<SSEState>()(
             }
           } else {
             // 일반 메시지 전송
-            await MessageService.sendMessageToStatus(
+            const restMessage = await MessageService.sendMessageToStatus(
               message,
               status,
               endpoint,
               additionalParams
             );
+
+            // visualization 응답 처리
+            if (endpoint.api.path === "/workflow/visualization-type") {
+              if (restMessage && restMessage instanceof Response) {
+                try {
+                  const responseData = await restMessage.json();
+                  if (responseData?.recommendations) {
+                    const chatStore = useChatStore.getState();
+                    const visualizationRecommendations =
+                      StreamService.processWorkflowVisualizationResponse(
+                        responseData
+                      );
+
+                    // 각 추천사항을 개별 컴포넌트로 추가
+                    visualizationRecommendations.forEach((recommendation) => {
+                      chatStore.addComponentMessage(
+                        ComponentType.DATA_VISUALIZE,
+                        recommendation
+                      );
+                    });
+                  }
+                } catch (jsonError) {
+                  console.error("Failed to parse response JSON:", jsonError);
+                }
+              }
+            }
+            // code generator 처리
+            else if (endpoint.api.path === "/workflow/code-generator") {
+              debugger;
+            }
           }
         } catch (error) {
           const errorMessage =
@@ -257,6 +309,19 @@ export const useSSEStore = create<SSEState>()(
 
             case "data":
               get().handleDataEvent(data, id);
+              break;
+
+            case "error":
+              // 에러 상태를 별도로 처리
+              get().handleStreamError(data, "stream");
+              get().stopStreaming(); // 스트리밍 중단
+
+              // 에러 메시지를 채팅에 표시
+              const chatStore = useChatStore.getState();
+              chatStore.addMessage({
+                type: "ai",
+                content: `⚠️ 오류가 발생했습니다: ${data}`,
+              });
               break;
 
             case "complete":
@@ -345,7 +410,7 @@ export const useSSEStore = create<SSEState>()(
           const currentChannel = channelStore.getCurrentChannel();
           if (currentChannel) {
             channelStore.updateChannelMeta(currentChannel.meta.channelId, {
-              threadId: threadId,
+              threadId: threadId[0],
               threadStatus: "READY",
               lastActivity: new Date().toISOString(),
             });
@@ -380,6 +445,28 @@ export const useSSEStore = create<SSEState>()(
           currentMessageId: undefined,
         });
       },
+
+      // Clear error state
+      clearError: () => {
+        set({
+          hasError: false,
+          errorType: undefined,
+          streamError: undefined,
+        });
+      },
+
+      // Handle stream error
+      handleStreamError: (
+        error: string,
+        type: "stream" | "api" | "connection" = "stream"
+      ) => {
+        set({
+          hasError: true,
+          errorType: type,
+          streamError: error,
+          lastError: error,
+        });
+      },
     }),
     {
       name: "vibecraft-sse-store",
@@ -396,6 +483,8 @@ export const useSSEActions = () => {
     reconnect: store.reconnect,
     sendMessage: store.sendMessage,
     sendMessageToStatus: store.sendMessageToStatus,
+    clearError: store.clearError,
+    handleStreamError: store.handleStreamError,
   };
 };
 
@@ -408,5 +497,8 @@ export const useSSEState = () => {
     reconnectAttempts: store.reconnectAttempts,
     lastError: store.lastError,
     currentEventType: store.currentEventType,
+    hasError: store.hasError,
+    errorType: store.errorType,
+    streamError: store.streamError,
   };
 };

@@ -32,6 +32,7 @@ export type ThreadState =
 export interface ChannelMeta {
   channelId: string;
   channelName: string;
+  description: string;
   currentStatus: DashboardStatus;
   lastStatus: DashboardStatus;
   threadId?: string;
@@ -39,7 +40,6 @@ export interface ChannelMeta {
   createdAt: string;
   updatedAt: string;
   isCompleted: boolean;
-  description?: string;
   lastActivity?: string;
 }
 

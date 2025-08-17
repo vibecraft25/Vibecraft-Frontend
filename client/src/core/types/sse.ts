@@ -4,7 +4,7 @@
  */
 
 export interface SSEEvent {
-  event: "ai" | "menu" | "data" | "complete";
+  event: "ai" | "menu" | "data" | "error" | "complete";
   data: string;
   id?: string;
 }

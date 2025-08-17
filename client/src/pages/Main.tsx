@@ -1,4 +1,4 @@
-import { Button, Typography } from "antd";
+import { Button } from "antd";
 import { Database } from "lucide-react";
 
 import { useChannel } from "@/hooks/useChannel";
@@ -7,9 +7,7 @@ import Sidebar from "./Sidebar";
 import PromptBox from "./PromptBox";
 import ChatView from "./ChatView";
 import Process from "@/components/Process";
-import { useChatState } from "@/core";
-
-const { Title } = Typography;
+import { useSSE } from "@/hooks";
 
 const Main = () => {
   const {
@@ -19,14 +17,13 @@ const Main = () => {
     getChannelProgress,
     createChannel,
     switchChannel,
-    deleteChannel,
     updateNextStep,
     isChannelLoading,
     isApiLoading,
-    stats,
   } = useChannel({
     autoLoad: true,
   });
+  const { sendMessage } = useSSE({ updateNextStep: updateNextStep });
 
   const progress = getChannelProgress();
 
@@ -40,15 +37,15 @@ const Main = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="h-screen bg-gray-50 flex overflow-hidden">
       {/* Sidebar */}
       <Sidebar channelsProps={{ channels, createChannel, switchChannel }} />
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 h-full">
         {/* Content */}
         <div className="flex-1 overflow-hidden">
-          <div className="h-screen flex flex-col bg-gray-50">
+          <div className="h-full flex flex-col bg-gray-50">
             {/* 헤더 */}
             <div className="flex-shrink-0 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
               <div className="flex items-center space-x-3">
@@ -128,6 +125,7 @@ const Main = () => {
                           <ChatView
                             channelMeta={channelMeta}
                             isLoading={isApiLoading}
+                            sendMessage={sendMessage}
                             updateNextStep={updateNextStep}
                           />
                         </div>
@@ -138,7 +136,10 @@ const Main = () => {
 
                 {/* Fixed Prompt Box */}
                 <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 w-full max-w-4xl px-4 z-50">
-                  <PromptBox channelMeta={channelMeta} />
+                  <PromptBox
+                    channelMeta={channelMeta}
+                    sendMessage={sendMessage}
+                  />
                 </div>
               </div>
             )}

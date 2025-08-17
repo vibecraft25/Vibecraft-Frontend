@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useRef } from "react";
+import { useEffect, useCallback, useRef, useState } from "react";
 import { Card, Typography, Empty, Spin } from "antd";
 import { MessageSquare, User, Bot } from "lucide-react";
 import ReactMarkdown from "react-markdown";
@@ -7,18 +7,16 @@ import remarkBreaks from "remark-breaks";
 // import { SSEMessage } from "@/hooks/useSSE";
 import {
   ChannelMeta,
-  ChatMessage,
   ComponentType,
+  DashboardStatus,
+  StreamEndpoint,
   useChatActions,
   useChatState,
 } from "@/core";
 
-import { ThreadState } from "@/types/session";
-
 import ComponentRenderer from "@/components/chat/ComponentRenderer";
 import { MenuOption } from "@/components/chat/Menu";
 import { useFileUpload } from "@/hooks/useFileUpload";
-import { useSSE } from "@/hooks";
 import { API_OPTIONS_ENDPOINTS } from "@/utils/apiEndpoints";
 
 const { Text } = Typography;
@@ -26,40 +24,35 @@ const { Text } = Typography;
 interface ChatViewProps {
   channelMeta: ChannelMeta;
   isLoading?: boolean;
+  sendMessage: (
+    message: string,
+    status: DashboardStatus,
+    props?: {
+      endpoint?: StreamEndpoint;
+      additionalParams?: Record<string, string>;
+    }
+  ) => Promise<boolean>;
   updateNextStep: () => void;
 }
 
 const ChatView = ({
   channelMeta,
   isLoading = false,
+  sendMessage,
   updateNextStep,
 }: ChatViewProps) => {
+  // 선택된 컬럼들을 관리하는 상태
+  const [selectedColumns, setSelectedColumns] = useState<string[]>([]);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const isUserScrollingRef = useRef(false);
 
-  const { messages, isStreaming, currentEventType } = useChatState();
+  const { messages } = useChatState();
   const { addMessage } = useChatActions();
-  const { sendMessage } = useSSE();
 
   // 파일 업로드 훅 사용
   const { updateFiles } = useFileUpload();
-
-  // 메시지 업데이트 디버깅
-  // useEffect(() => {
-  //   console.log("🔄 ChatView messages 업데이트:", {
-  //     length: messages.length,
-  //     channelId,
-  //     timestamp: new Date().toISOString(),
-  //     messages: messages.map((m) => ({
-  //       content:
-  //         typeof m.event.data === "string"
-  //           ? m.event.data.slice(0, 50)
-  //           : "array",
-  //       type: m.event.event,
-  //     })),
-  //   });
-  // }, [messages, channelId]);
 
   // 스크롤 이벤트 핸들러
   const handleScroll = () => {
@@ -80,15 +73,6 @@ const ChatView = ({
       if (channelMeta.lastStatus === "TOPIC") {
         switch (selectedOption.value) {
           case "1":
-            // type: "ai" | "human" | "component";
-            // componentType?: ComponentType;
-            // componentData?: any;
-            // // metadata?: {
-            // //   threadId?: string;
-            // //   isStreaming?: boolean;
-            // //   sseEventType?: "ai" | "menu" | "data" | "complete";
-            // // };
-
             addMessage({
               type: "human",
               content: selectedOption.label,
@@ -107,31 +91,35 @@ const ChatView = ({
             break;
         }
       } else if (channelMeta.lastStatus === "DATA") {
-        // addMessage({
-        //   type: "human",
-        //   content: selectedOption.label,
-        // });
-        updateNextStep();
-        debugger;
+        if (!channelMeta.threadId) return;
+
         switch (selectedOption.value) {
+          // 추천 항목 데이터 컬럼명으로 전달
           case "1":
-            // 추천 항목 데이터 컬럼명으로 전달
-            await sendMessage(selectedOption.label, channelMeta.lastStatus, {
-              endpoint: API_OPTIONS_ENDPOINTS.DATA[selectedOption.value],
-            });
-            break;
-          case "2":
-            // 선택 항목 데이터 컬럼명으로 전달
-            await sendMessage(selectedOption.label, channelMeta.lastStatus, {
-              endpoint: API_OPTIONS_ENDPOINTS.DATA[selectedOption.value],
-            });
-            break;
-          case "3":
-            // 시각화 방식 추천 (가공 건너뜀)
             await sendMessage(selectedOption.label, channelMeta.lastStatus, {
               endpoint: API_OPTIONS_ENDPOINTS.DATA[selectedOption.value],
               additionalParams: {
-                thread_id: channelMeta.threadId ?? "",
+                query: selectedColumns.join(","),
+                thread_id: channelMeta.threadId,
+              },
+            });
+            break;
+          // 선택 항목 데이터 컬럼명으로 전달
+          case "2":
+            await sendMessage(selectedOption.label, channelMeta.lastStatus, {
+              endpoint: API_OPTIONS_ENDPOINTS.DATA[selectedOption.value],
+              additionalParams: {
+                query: selectedColumns.join(","),
+                thread_id: channelMeta.threadId,
+              },
+            });
+            break;
+          // 시각화 방식 추천
+          case "3":
+            await sendMessage(selectedOption.label, channelMeta.lastStatus, {
+              endpoint: API_OPTIONS_ENDPOINTS.DATA[selectedOption.value],
+              additionalParams: {
+                thread_id: channelMeta.threadId,
               },
             });
             break;
@@ -139,29 +127,28 @@ const ChatView = ({
             break;
         }
       } else if (channelMeta.lastStatus === "DATA_PROCESS") {
-        // addMessage({
-        //   type: "human",
-        //   content: selectedOption.label,
-        // });
-        // updateNextStep();
-        // switch (selectedOption.value) {
-        //   case "1":
-        //     // 추천 항목 데이터 컬럼명으로 전달
-        //     debugger;
-        //     break;
-        //   case "2":
-        //     // 선택 항목 데이터 컬럼명으로 전달
-        //     break;
-        //   case "3":
-        //     // 시각화 방식 추천 (가공 건너뜀)
-        //     debugger;
-        //     break;
-        //   default:
-        //     break;
-        // }
+        debugger;
+        if (!channelMeta.threadId) return;
+
+        switch (selectedOption.value) {
+          // 컬럼 추가 수정
+          case "1":
+            break;
+          // 시각화 방식 추천
+          case "2":
+            await sendMessage(selectedOption.label, channelMeta.lastStatus, {
+              endpoint: API_OPTIONS_ENDPOINTS.DATA[selectedOption.value],
+              additionalParams: {
+                thread_id: channelMeta.threadId,
+              },
+            });
+            break;
+          default:
+            break;
+        }
       }
     },
-    [channelMeta]
+    [channelMeta, selectedColumns]
   );
 
   const handleUpdateUploadedFiles = useCallback(
@@ -293,6 +280,8 @@ const ChatView = ({
                   message={message}
                   onMenuOptionSelect={handleMenuOptionSelect}
                   onUpdateUploadedFiles={handleUpdateUploadedFiles}
+                  selectedColumns={selectedColumns}
+                  setSelectedColumns={setSelectedColumns}
                 />
               ) : (
                 <div className="text-gray-800 prose prose-sm max-w-none">

@@ -11,12 +11,16 @@ interface ComponentRendererProps {
   onUpdateUploadedFiles?: (files: UploadedFile[]) => void;
   onButtonClick?: () => void;
   onInputChange?: (value: string) => void;
+  selectedColumns?: string[];
+  setSelectedColumns?: (columns: string[]) => void;
 }
 
 const ComponentRenderer = ({
   message,
   onMenuOptionSelect,
   onUpdateUploadedFiles,
+  selectedColumns,
+  setSelectedColumns,
 }: ComponentRendererProps) => {
   const renderComponent = (
     componentType: ComponentType,
@@ -36,7 +40,13 @@ const ComponentRenderer = ({
         return <Uploader onUpdateUploadedFiles={onUpdateUploadedFiles} />;
 
       case "DATA_TABLE":
-        return <ColumnTable tableData={componentData} />;
+        return (
+          <ColumnTable 
+            tableData={componentData} 
+            selectedColumns={selectedColumns}
+            setSelectedColumns={setSelectedColumns}
+          />
+        );
 
       case "DATA_VISUALIZE":
         return <>DATA_VISUALIZE</>;

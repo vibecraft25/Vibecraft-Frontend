@@ -1,4 +1,4 @@
-import { DashboardStatus } from "@/core";
+import { DashboardStatus, StreamEndpoint } from "@/core";
 import { API_CONFIG } from "@/config/env";
 
 // API 엔드포인트 구성
@@ -9,12 +9,10 @@ export interface ApiEndpoint {
 }
 
 // ProcessStatus별 API 엔드포인트 매핑
-export const API_ENDPOINTS: Record<
-  DashboardStatus,
-  { isStream: boolean; api: ApiEndpoint }
-> = {
+export const API_ENDPOINTS: Record<DashboardStatus, StreamEndpoint> = {
   TOPIC: {
     isStream: true,
+    updateNextStep: false,
     api: {
       path: "/workflow/stream/set-topic",
       method: "GET",
@@ -25,20 +23,28 @@ export const API_ENDPOINTS: Record<
   },
   DATA: {
     isStream: true,
+    updateNextStep: true,
     api: {
       path: "/workflow/stream/set-data",
       method: "GET",
     },
   },
   DATA_PROCESS: {
-    isStream: false,
+    // isStream: false,
+    isStream: true,
+    updateNextStep: true,
     api: {
-      path: "/workflow/visualization-type",
+      // path: "/workflow/visualization-type",
+      path: "/workflow/stream/code-generator",
       method: "GET",
+      params: {
+        visualization_type: "comparison",
+      },
     },
   },
   BUILD: {
     isStream: true,
+    updateNextStep: true,
     api: {
       path: "",
       method: "GET",
@@ -46,6 +52,7 @@ export const API_ENDPOINTS: Record<
   },
   DEPLOY: {
     isStream: true,
+    updateNextStep: true,
     api: {
       path: "",
       method: "GET",
@@ -55,11 +62,12 @@ export const API_ENDPOINTS: Record<
 
 export const API_OPTIONS_ENDPOINTS: Record<
   DashboardStatus,
-  Record<string, { isStream: boolean; api: ApiEndpoint }>
+  Record<string, StreamEndpoint>
 > = {
   TOPIC: {
     "1": {
       isStream: true,
+      updateNextStep: true,
       api: {
         path: "/workflow/stream/set-data",
         method: "GET",
@@ -67,6 +75,7 @@ export const API_OPTIONS_ENDPOINTS: Record<
     },
     "2": {
       isStream: true,
+      updateNextStep: false,
       api: {
         path: "/chat/stream/load-chat",
         method: "GET",
@@ -74,6 +83,7 @@ export const API_OPTIONS_ENDPOINTS: Record<
     },
     "3": {
       isStream: true,
+      updateNextStep: false,
       api: {
         path: "/workflow/stream/set-topic",
         method: "GET",
@@ -83,6 +93,7 @@ export const API_OPTIONS_ENDPOINTS: Record<
   DATA: {
     "1": {
       isStream: true,
+      updateNextStep: false,
       api: {
         path: "/workflow/stream/process-data-selection",
         method: "GET",
@@ -90,20 +101,41 @@ export const API_OPTIONS_ENDPOINTS: Record<
     },
     "2": {
       isStream: true,
+      updateNextStep: false,
       api: {
         path: "/workflow/stream/process-data-selection",
         method: "GET",
       },
     },
     "3": {
-      isStream: false,
+      // isStream: false,
+      isStream: true,
+      updateNextStep: true,
       api: {
-        path: "/workflow/visualization-type",
+        // path: "/workflow/visualization-type",
+        path: "/workflow/stream/code-generator",
         method: "GET",
+        params: {
+          visualization_type: "comparison",
+        },
       },
     },
   },
-  DATA_PROCESS: {},
+  DATA_PROCESS: {
+    "2": {
+      // isStream: false,
+      isStream: true,
+      updateNextStep: true,
+      api: {
+        // path: "/workflow/visualization-type",
+        path: "/workflow/stream/code-generator",
+        method: "GET",
+        params: {
+          visualization_type: "comparison",
+        },
+      },
+    },
+  },
   BUILD: {},
   DEPLOY: {},
 };
@@ -136,7 +168,7 @@ export const getStreamApiResponse = (
 export const getApiResponse = async (
   endpoint: ApiEndpoint,
   additionalParams?: Record<string, string>
-) => {
+): Promise<Response> => {
   const params = new URLSearchParams({
     ...endpoint.params,
     ...additionalParams,
@@ -155,5 +187,5 @@ export const getApiResponse = async (
     throw new Error(`API 호출 실패: ${response.status}`);
   }
 
-  return response.json();
+  return response;
 };

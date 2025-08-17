@@ -101,9 +101,11 @@ export class DataService {
   /**
    * Get all available channels with basic info
    */
-  static getAllChannelSummaries(): Array<{
+  static getAllChannels(): Array<{
     channelId: string;
+    threadId?: string;
     name: string;
+    description: string;
     status: string;
     lastActivity?: string;
     isCompleted: boolean;
@@ -117,7 +119,9 @@ export class DataService {
         if (meta) {
           summaries.push({
             channelId: meta.channelId,
+            threadId: meta.threadId,
             name: meta.channelName,
+            description: meta.description,
             status: meta.currentStatus,
             lastActivity: meta.lastActivity,
             isCompleted: meta.isCompleted,
@@ -181,7 +185,9 @@ export class DataService {
   /**
    * Clean up old inactive channels
    */
-  static async cleanupInactiveChannels(daysInactive: number = 30): Promise<number> {
+  static async cleanupInactiveChannels(
+    daysInactive: number = 30
+  ): Promise<number> {
     try {
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - daysInactive);
@@ -192,12 +198,15 @@ export class DataService {
 
       for (const channelId of channelIds) {
         const meta = StorageService.loadChannelMeta(channelId);
-        
-        if (meta && 
-            meta.lastActivity && 
-            meta.lastActivity < cutoffTimestamp &&
-            !meta.isCompleted) { // Keep completed channels
-          
+
+        if (
+          meta &&
+          meta.lastActivity &&
+          meta.lastActivity < cutoffTimestamp &&
+          !meta.isCompleted
+        ) {
+          // Keep completed channels
+
           await this.deleteChannelData(channelId);
           deletedCount++;
         }

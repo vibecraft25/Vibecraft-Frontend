@@ -6,11 +6,13 @@
 import { useEffect, useCallback, useRef, useMemo } from "react";
 import { useSSEActions, useSSEState } from "@/core/stores/sseStore";
 import type { DashboardStatus, SSEConfig } from "@/core/types";
-import { useChatActions } from "@/core";
+import { StreamEndpoint, useChannelActions, useChatActions } from "@/core";
 import { API_CONFIG } from "@/config/env";
 import { API_ENDPOINTS, ApiEndpoint } from "@/utils/apiEndpoints";
+import { useChannel } from "./useChannel";
 
 interface UseSSEOptions {
+  updateNextStep?: () => void;
   autoConnect?: boolean;
   autoReconnect?: boolean;
   onConnect?: () => void;
@@ -117,10 +119,7 @@ export const useSSE = (options: UseSSEOptions = {}) => {
       message: string,
       status: DashboardStatus,
       props?: {
-        endpoint?: {
-          isStream: boolean;
-          api: ApiEndpoint;
-        };
+        endpoint?: StreamEndpoint;
         additionalParams?: Record<string, string>;
       }
     ) => {
@@ -143,6 +142,11 @@ export const useSSE = (options: UseSSEOptions = {}) => {
           _endpoint,
           props?.additionalParams
         );
+
+        if (_endpoint.updateNextStep && options.updateNextStep) {
+          debugger;
+          options.updateNextStep();
+        }
 
         return true;
       } catch (error) {

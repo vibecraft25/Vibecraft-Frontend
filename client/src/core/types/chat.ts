@@ -49,13 +49,21 @@ export interface DataTableComponentData {
   pageSize: number;
 }
 
-export interface DataVisualizeComponentData {
-  chartType: "line" | "bar" | "pie" | "scatter";
-  data: any[];
-  xAxis: string;
-  yAxis: string;
-  title?: string;
+export interface VisualizationRecommendation {
+  visualization_type: VisualizationType;
+  confidence: number;
+  reason: string;
+  data_requirements: string[];
+  benefits: string[];
+  title?: string; // 제목 추가
 }
+
+// 현재 지원되는 비주얼라이제이션 타입들 (추후 확장 가능)
+export type VisualizationType =
+  | "comparison"
+  | "kpi-dashboard"
+  | "geo-spatial"
+  | string; // 추후 새로운 타입들을 위한 확장성
 
 export interface CodeBlockComponentData {
   language: string;
@@ -75,6 +83,6 @@ export type ComponentData =
   | MenuComponentData
   | DataUploadComponentData
   | DataTableComponentData
-  | DataVisualizeComponentData
+  | VisualizationRecommendation
   | CodeBlockComponentData
   | PageViewerComponentData;

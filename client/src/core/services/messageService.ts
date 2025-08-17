@@ -3,11 +3,7 @@
  * Handles message sending, receiving, and transformation logic
  */
 
-import type {
-  SSEConfig,
-  SSEMessage,
-  DashboardStatus,
-} from "../types";
+import type { SSEConfig, SSEMessage, DashboardStatus } from "../types";
 import {
   getStreamApiResponse,
   ApiEndpoint,
@@ -15,13 +11,14 @@ import {
 } from "@/utils/apiEndpoints";
 
 export interface MessageParams {
-  message: string;
-  timestamp?: string;
+  // message: string;
+  // timestamp?: string;
   [key: string]: any;
 }
 
 export interface StreamEndpoint {
   isStream: boolean;
+  updateNextStep: boolean;
   api: ApiEndpoint;
 }
 
@@ -29,10 +26,7 @@ export class MessageService {
   /**
    * Send regular HTTP message
    */
-  static async sendMessage(
-    config: SSEConfig,
-    message: string
-  ): Promise<void> {
+  static async sendMessage(config: SSEConfig, message: string): Promise<void> {
     if (!config) {
       throw new Error("No configuration available for sending message");
     }
@@ -69,8 +63,8 @@ export class MessageService {
     const params: MessageParams = {
       ...endpoint.api.params,
       ...additionalParams,
-      message,
-      timestamp: new Date().toISOString(),
+      // message,
+      // timestamp: new Date().toISOString(),
     };
 
     try {
@@ -83,7 +77,8 @@ export class MessageService {
         return response;
       } else {
         // 일반 메시지 전송
-        await getApiResponse(endpoint.api, params);
+        const response = await getApiResponse(endpoint.api, params);
+        return response;
       }
     } catch (error) {
       console.error("Failed to send message to status:", error);
