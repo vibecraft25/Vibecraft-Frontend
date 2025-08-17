@@ -1,5 +1,5 @@
 import { ThreadState } from "@/types/session";
-import { ProcessStatus } from "@/utils/processStatus";
+import { DashboardStatus } from "@/core/types/channel";
 
 export const PromptBoxThreadMessage: Record<ThreadState, string> = {
   IDLE: "어떤 데이터를 시각화하고 싶으신가요? (예: 우리 회사 매출과 날씨의 상관관계를 보여줘)",
@@ -14,7 +14,7 @@ export const PromptBoxThreadMessage: Record<ThreadState, string> = {
   READY: "채팅 세션에 메시지를 입력하세요...",
 };
 
-export const PromptBoxProcessMessage: Record<ProcessStatus, string> = {
+export const PromptBoxProcessMessage: Record<DashboardStatus, string> = {
   TOPIC:
     "어떤 주제의 대시보드를 만들고 싶으신가요? (예: 매출 분석, 고객 데이터, 웹사이트 트래픽 등)",
   DATA: "데이터에 대한 추가 정보나 요구사항을 입력하세요...",

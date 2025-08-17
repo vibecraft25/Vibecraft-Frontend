@@ -28,9 +28,12 @@ export const useFileUpload = () => {
   }, []);
 
   // 특정 파일 찾기
-  const findFile = useCallback((fileUid: string) => {
-    return files.find((file) => file.uid === fileUid);
-  }, [files]);
+  const findFile = useCallback(
+    (fileUid: string) => {
+      return files.find((file) => file.uid === fileUid);
+    },
+    [files]
+  );
 
   // 파일 개수 및 총 크기 계산
   const fileStats = {
@@ -42,7 +45,7 @@ export const useFileUpload = () => {
     // 상태
     files,
     fileStats,
-    
+
     // 액션들
     updateFiles,
     addFiles,

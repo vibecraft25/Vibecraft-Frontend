@@ -1,364 +1,152 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Button } from "antd";
 import { Database } from "lucide-react";
 
-import { useSSE } from "../hooks/useSSE";
-import { useChatStore } from "@/stores/chatStore";
-import { useFileUpload } from "@/hooks/useFileUpload";
-import { CONFIG } from "@/config/env";
+import { useChannel } from "@/hooks/useChannel";
 
-import Intro from "../components/Intro";
-import PromptBox from "../components/PromptBox";
-import ChatView from "../components/chat/ChatView";
-import Layout from "../components/Layout";
-import { PromptBoxThreadMessage } from "@/message/prompt";
-import { PROCESS_STATUS_ORDER, ProcessStatus } from "@/utils/processStatus";
-import { MenuOption } from "@/components/chat/Menu";
+import Sidebar from "./Sidebar";
+import PromptBox from "./PromptBox";
+import ChatView from "./ChatView";
 import Process from "@/components/Process";
-import { API_OPTIONS_ENDPOINTS, ApiEndpoint } from "@/utils/apiEndpoints";
+import { useSSE } from "@/hooks";
 
 const Main = () => {
-  const [currentThreadId, setCurrentThreadId] = useState<string>();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
-  const [isNewChatMode, setIsNewChatMode] = useState(false);
-  const [selectedProcessStatus, setSelectedProcessStatus] =
-    useState<ProcessStatus>();
-
-  // 파일 업로드 훅 사용
   const {
-    files: uploadedFiles,
-    updateFiles,
-    removeFile,
-    clearAllFiles,
-  } = useFileUpload();
-
-  // 초기화 추적을 위한 ref
-  const initializedRef = useRef(false);
-
-  // Zustand store에서 chatItems 가져오기 - selector 패턴으로 안정적 참조
-  const chatItems = useChatStore((state) => state.chatItems);
-
-  // chatItems 로드 상태 디버깅
-  useEffect(() => {
-    console.log("📋 Main.tsx chatItems 상태:", {
-      length: chatItems.length,
-      items: chatItems.map((item) => ({
-        channelId: item.channelId,
-        submit: item.submit,
-      })),
-    });
-  }, [chatItems]);
-
-  const {
-    threadState,
-    processStatus,
-    inputType,
-    channelId,
-    messages,
+    channels,
+    currentChannel,
+    hasChannels,
+    getChannelProgress,
+    createChannel,
     switchChannel,
-    addMessage,
-    setNextProcessStatus,
-    sendMessage,
-    startNewChat,
-    fetchProcess,
-  } = useSSE({
-    serverUrl: CONFIG.API.BASE_URL,
-    threadId: currentThreadId,
-    autoConnect: false,
-    autoRestore: !isNewChatMode, // 새 채팅 모드가 아닐 때만 자동 복구
-    maxRetries: 5,
-    retryInterval: 3000,
+    updateNextStep,
+    isChannelLoading,
+    isApiLoading,
+  } = useChannel({
+    autoLoad: true,
   });
+  const { sendMessage } = useSSE({ updateNextStep: updateNextStep });
 
-  // 현재 채널의 최고 도달 단계 계산 - useMemo로 최적화
-  const maxReachedStatus = useMemo((): ProcessStatus | undefined => {
-    if (!channelId) return undefined;
+  const progress = getChannelProgress();
 
-    const currentChatItem = chatItems.find(
-      (item) => item.lastThreadId === channelId
-    );
+  const { meta: channelMeta } = currentChannel ?? { meta: undefined };
 
-    if (!currentChatItem) return processStatus;
+  // 현재 채팅 제목 계산
+  const getCurrentChatTitle = () => {
+    if (!channelMeta) return "새로운 채팅";
 
-    // lastProcess와 processStatus 중 더 높은 단계 반환
-    const lastProcessIndex = currentChatItem.lastProcess
-      ? PROCESS_STATUS_ORDER.indexOf(currentChatItem.lastProcess)
-      : -1;
-    const currentProcessIndex = PROCESS_STATUS_ORDER.indexOf(processStatus);
-
-    return lastProcessIndex > currentProcessIndex
-      ? currentChatItem.lastProcess!
-      : processStatus;
-  }, [channelId, chatItems, processStatus]);
-
-  // fetchProcess를 래핑하여 selectedProcessStatus 관리 - useCallback으로 최적화
-  const handleFetchProcess = useCallback(
-    (status: ProcessStatus) => {
-      setSelectedProcessStatus(status);
-      fetchProcess(status);
-    },
-    [fetchProcess]
-  );
-
-  const handleNewChat = useCallback(() => {
-    console.log(
-      "🆕 새 채팅 시작 버튼 클릭 - 현재 currentThreadId:",
-      currentThreadId,
-      "channelId:",
-      channelId
-    );
-    setIsNewChatMode(true); // 새 채팅 모드 활성화
-    setCurrentThreadId(undefined); // 명시적으로 currentThreadId 초기화
-    setIsInitialLoad(false); // 새 채팅 시작은 사용자 액션임을 명시
-    startNewChat();
-  }, [currentThreadId, channelId, startNewChat]);
-
-  // 파일 관리 콜백 함수들 (훅에서 가져온 함수들을 그대로 사용)
-  const handleUpdateUploadedFiles = updateFiles;
-
-  // 안정적인 콜백 함수들
-  const handleToggleSidebar = useCallback(
-    () => setSidebarOpen((prev) => !prev),
-    []
-  );
-
-  // 사이드바 Props를 메모이제이션하여 불필요한 리렌더링 방지
-  const sidebarProps = useMemo(
-    () => ({
-      isOpen: sidebarOpen,
-      onToggle: handleToggleSidebar,
-      chattingProps: {
-        channelId: channelId,
-        switchChannel: switchChannel,
-        onNewChat: handleNewChat,
-      },
-    }),
-    [sidebarOpen, channelId, handleToggleSidebar, switchChannel, handleNewChat]
-  );
-
-  // 안정적인 sendMessage 함수
-  const handleSendMessage = useCallback(
-    // (message: string, apiEndpoint?: ApiEndpoint) => {
-    (message: string) => {
-      // 첫 메시지 전송 시 새 채팅 모드 해제
-      if (isNewChatMode) {
-        console.log("📝 첫 메시지 전송으로 새 채팅 모드 해제");
-        setIsNewChatMode(false);
-      }
-      debugger;
-      return sendMessage(message);
-    },
-    [processStatus, isNewChatMode, sendMessage]
-  );
-
-  // 메뉴 옵션 선택 핸들러
-  const handleMenuOptionSelect = useCallback(
-    (selectedOption: MenuOption) => {
-      console.log("📋 메뉴 옵션 선택:", selectedOption);
-
-      // 주제 선정 워크플로우
-      if (processStatus === "TOPIC") {
-        switch (selectedOption.value) {
-          // 데이터 설정 - 자동
-          case "1":
-            addMessage(selectedOption.label, "human");
-            setNextProcessStatus();
-            addMessage("", "ai", "DATA_UPLOAD");
-            break;
-          // 데이터 설정 - 수동
-          case "2":
-            break;
-          // 주제 재설정
-          case "3":
-            break;
-          default:
-            break;
-        }
-      }
-      // 주제 선정 워크플로우
-      else if (processStatus === "DATA_PROCESS") {
-        switch (selectedOption.value) {
-          // 추천 목록 삭제
-          case "1":
-            break;
-          // 직접 선택
-          case "2":
-            break;
-          // 건너 뛰기
-          case "3":
-            handleSendMessage(selectedOption.label);
-            break;
-          default:
-            break;
-        }
-      }
-      return;
-    },
-    [processStatus]
-  );
-
-  // PromptBox Props를 메모이제이션
-  const promptBoxProps = useMemo(
-    () => ({
-      inputType,
-      processStatus,
-      placeholder: PromptBoxThreadMessage[threadState],
-      disabled:
-        threadState === "CONNECTING" ||
-        threadState === "SENDING" ||
-        threadState === "RECEIVING" ||
-        threadState === "RECONNECTING",
-      sendMessage: handleSendMessage,
-    }),
-    [inputType, processStatus, threadState, handleSendMessage]
-  );
-
-  // ChatView Props를 메모이제이션
-  const chatViewProps = useMemo(
-    () => ({
-      messages,
-      isLoading: threadState === "SENDING" || threadState === "RECEIVING",
-      channelId, // ChatView에서 channelId prop으로 받음
-      threadState,
-      onMenuOptionSelect: handleMenuOptionSelect,
-      onUpdateUploadedFiles: handleUpdateUploadedFiles,
-      className: "h-full",
-      maxHeight: "100%",
-    }),
-    [
-      messages,
-      threadState,
-      channelId,
-      processStatus,
-      selectedProcessStatus,
-      maxReachedStatus,
-      handleFetchProcess,
-      handleMenuOptionSelect,
-      handleUpdateUploadedFiles,
-    ]
-  );
+    return channelMeta.description ?? "채팅 제목 추후 update";
+  };
 
   return (
-    <Layout showSidebar={true} sidebarProps={sidebarProps}>
-      <div className="h-screen flex flex-col bg-gray-50">
-        {/* 헤더 */}
-        <div className="flex-shrink-0 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="flex items-center space-x-4">
-              <Database className="w-5 h-5 text-purple-500" />
-              <div>
-                <h1 className="text-lg font-semibold text-gray-800">
-                  {(() => {
-                    if (!channelId) {
-                      return "새로운 채팅";
-                    }
+    <div className="h-screen bg-gray-50 flex overflow-hidden">
+      {/* Sidebar */}
+      <Sidebar channelsProps={{ channels, createChannel, switchChannel }} />
 
-                    // 현재 세션의 ChatItem 찾기
-                    const currentChatItem = chatItems.find(
-                      (item) => item.lastThreadId === channelId
-                    );
-
-                    if (currentChatItem) {
-                      return currentChatItem.submit;
-                    }
-                    return "새로운 채팅";
-                  })()}
-                </h1>
-                <p className="text-sm text-gray-500">
-                  {channelId
-                    ? `채팅 세션: ${channelId.slice(0, 8)}...`
-                    : "채팅에 연결되어 있지 않습니다."}
-                </p>
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col min-w-0 h-full">
+        {/* Content */}
+        <div className="flex-1 overflow-hidden">
+          <div className="h-full flex flex-col bg-gray-50">
+            {/* 헤더 */}
+            <div className="flex-shrink-0 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-4">
+                  <Database className="w-5 h-5 text-purple-500" />
+                  <div>
+                    <h1 className="text-lg font-semibold text-gray-800">
+                      {getCurrentChatTitle()}
+                    </h1>
+                    <p className="text-sm text-gray-500">
+                      {channelMeta
+                        ? `채팅 세션: ${channelMeta.channelId.slice(0, 8)}...`
+                        : "채팅에 연결되어 있지 않습니다."}
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-        </div>
 
-        {/* 메인 컨텐츠 */}
-        <div className="flex-1 flex relative min-h-0">
-          <div className="w-full h-full border-r border-gray-200">
-            {/* {threadState === "FIRST_VISIT" ? (
-              <div className="w-full overflow-hidden h-screen">
-                <Intro />
-              </div>
-            ) : (
-              
-            )} */}
-            <div className="flex h-full p-6">
-              <div className="flex-1 overflow-hidden">
-                {threadState === "ERROR" ? (
-                  <div className="flex items-center justify-center h-full">
-                    <div className="text-center">
-                      <div className="text-red-500 mb-4">
-                        <svg
-                          className="w-12 h-12 mx-auto"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
+            {/* 메인 컨텐츠 */}
+            {hasChannels && channelMeta && progress && (
+              <div className="flex-1 flex relative min-h-0">
+                <div className="w-full h-full border-r border-gray-200">
+                  <div className="flex h-full p-6">
+                    <div className="flex-1 overflow-hidden">
+                      {channelMeta.threadStatus === "ERROR" ? (
+                        <div className="flex items-center justify-center h-full">
+                          <div className="text-center">
+                            <div className="text-red-500 mb-4">
+                              <svg
+                                className="w-12 h-12 mx-auto"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"
+                                />
+                              </svg>
+                            </div>
+                            <h3 className="text-lg font-medium text-gray-900 mb-2">
+                              연결 오류
+                            </h3>
+                            <p className="text-gray-600 mb-4">
+                              서버와의 연결에 문제가 발생했습니다.
+                            </p>
+                            <Button
+                              type="primary"
+                              onClick={() => window.location.reload()}
+                              className="bg-blue-500 hover:bg-blue-600"
+                            >
+                              페이지 새로고침
+                            </Button>
+                          </div>
+                        </div>
+                      ) : isChannelLoading ? (
+                        <div className="flex items-center justify-center h-full">
+                          <div className="text-center">
+                            <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+                            <h3 className="text-lg font-medium text-gray-900 mb-2">
+                              서버 연결 중
+                            </h3>
+                            <p className="text-gray-600">
+                              잠시만 기다려주세요...
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div
+                          className="flex flex-col h-full"
+                          style={{ maxHeight: "100%" }}
                         >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"
+                          <Process progress={progress} />
+                          <ChatView
+                            channelMeta={channelMeta}
+                            isLoading={isApiLoading}
+                            sendMessage={sendMessage}
+                            updateNextStep={updateNextStep}
                           />
-                        </svg>
-                      </div>
-                      <h3 className="text-lg font-medium text-gray-900 mb-2">
-                        연결 오류
-                      </h3>
-                      <p className="text-gray-600 mb-4">
-                        서버와의 연결에 문제가 발생했습니다.
-                      </p>
-                      <Button
-                        type="primary"
-                        onClick={() => window.location.reload()}
-                        className="bg-blue-500 hover:bg-blue-600"
-                      >
-                        페이지 새로고침
-                      </Button>
+                        </div>
+                      )}
                     </div>
                   </div>
-                ) : threadState === "CONNECTING" ? (
-                  <div className="flex items-center justify-center h-full">
-                    <div className="text-center">
-                      <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-                      <h3 className="text-lg font-medium text-gray-900 mb-2">
-                        서버 연결 중
-                      </h3>
-                      <p className="text-gray-600">잠시만 기다려주세요...</p>
-                    </div>
-                  </div>
-                ) : (
-                  <div
-                    className={`flex flex-col h-full`}
-                    style={{ maxHeight: "100%" }}
-                  >
-                    {/* ProcessStatus 표시 */}
-                    <Process
-                      threadState={threadState}
-                      processStatus={processStatus}
-                      selectedStatus={selectedProcessStatus}
-                      maxReachedStatus={maxReachedStatus}
-                    />
-                    <ChatView
-                      key={`chatview-${channelId}-${messages.length}`}
-                      {...chatViewProps}
-                    />
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+                </div>
 
-          {/* Fixed Prompt Box - 메인 컨텐츠 영역 내부에 absolute 배치 */}
-          <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 w-full max-w-4xl px-4 z-50">
-            <PromptBox {...promptBoxProps} />
+                {/* Fixed Prompt Box */}
+                <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 w-full max-w-4xl px-4 z-50">
+                  <PromptBox
+                    channelMeta={channelMeta}
+                    sendMessage={sendMessage}
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
-    </Layout>
+    </div>
   );
 };
 

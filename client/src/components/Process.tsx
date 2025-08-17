@@ -9,26 +9,21 @@ import {
   LucideIcon,
   Check,
 } from "lucide-react";
-import { ThreadState, ProcessStepState } from "@/types/session";
-import {
-  isProcessStepClickable,
-  PROCESS_STATUS_ORDER,
-  ProcessStatus,
-} from "@/utils/processStatus";
+
+import { ProcessStepState } from "@/types/session";
+import { PROCESS_STATUS_ORDER, DashboardStatus } from "@/core/types/channel";
 
 const { Text } = Typography;
 
 interface ProcessProps {
-  threadState?: ThreadState;
-  processStatus: ProcessStatus; // 현재 진행중인 단계 (고정)
-  selectedStatus?: ProcessStatus; // 현재 선택된/수정중인 단계
-  maxReachedStatus?: ProcessStatus; // 해당 채널이 도달한 최고 단계
-  fetchProcess?: (status: ProcessStatus) => void;
-  // onChangeProcess:
+  progress: {
+    last: DashboardStatus;
+    current: DashboardStatus;
+    isCompleted: boolean;
+  };
 }
-
 const StatusConfig: {
-  status: ProcessStatus;
+  status: DashboardStatus;
   icon: LucideIcon;
   text: string;
   color: string;
@@ -64,14 +59,12 @@ const getLightBackgroundColor = (color: string): string => {
 
 // 새로운 프로세스 단계 상태 계산 함수
 const getProcessStepStateNew = (
-  stepStatus: ProcessStatus,
-  currentProgressStatus: ProcessStatus, // 실제 진행중인 단계
-  selectedStatus?: ProcessStatus // 현재 선택된 단계
+  stepStatus: DashboardStatus,
+  last: DashboardStatus, // 실제 진행중인 단계
+  current: DashboardStatus // 현재 선택된 단계
 ): ProcessStepState => {
   const stepIndex = PROCESS_STATUS_ORDER.indexOf(stepStatus);
-  const currentProgressIndex = PROCESS_STATUS_ORDER.indexOf(
-    currentProgressStatus
-  );
+  const currentProgressIndex = PROCESS_STATUS_ORDER.indexOf(last);
   // Logic simplified - maxReachedStatus not needed for current implementation
 
   // 현재 진행중인 단계
@@ -80,11 +73,7 @@ const getProcessStepStateNew = (
   }
 
   // 현재 선택된 단계인지 확인 (완료된 단계를 클릭한 경우만)
-  if (
-    selectedStatus &&
-    stepStatus === selectedStatus &&
-    stepIndex < currentProgressIndex
-  ) {
+  if (current && stepStatus === current && stepIndex < currentProgressIndex) {
     return "editing"; // 완료된 단계 중 선택된 단계
   }
 
@@ -146,37 +135,22 @@ const getStepStyles = (
   }
 };
 
-const Process = ({
-  processStatus,
-  selectedStatus,
-  maxReachedStatus,
-  fetchProcess,
-}: ProcessProps) => {
-  // 클릭 가능 여부는 maxReachedStatus 기준으로
-  const baseStatus = maxReachedStatus || processStatus;
+const Process = ({ progress }: ProcessProps) => {
+  if (!progress) return <></>;
 
-  const handleProcessClick = useCallback(
-    (status: ProcessStatus) => {
-      const isClickable = isProcessStepClickable(
-        status,
-        maxReachedStatus || processStatus
-      );
-      if (fetchProcess && isClickable) {
-        fetchProcess(status);
-      }
-    },
-    [fetchProcess, maxReachedStatus, processStatus]
-  );
+  const handleProcessClick = useCallback((status: DashboardStatus) => {
+    console.log(status);
+  }, []);
 
   return (
     <div className="flex gap-4 p-4 border-b border-gray-100">
       {StatusConfig.map((config) => {
         const stepState = getProcessStepStateNew(
           config.status,
-          processStatus,
-          selectedStatus
+          progress.last,
+          progress.current
         );
-        const isClickable = isProcessStepClickable(config.status, baseStatus);
+        const isClickable = true;
         const styles = getStepStyles(stepState, config.color);
 
         // 완료된 단계는 체크 아이콘, 수정중/현재/대기 단계는 원래 아이콘
@@ -188,11 +162,7 @@ const Process = ({
             className={`flex flex-1 justify-between items-center gap-2 px-4 py-3 rounded-lg transition-all duration-200
               ${styles.opacity}
               ${styles.cursor}
-              ${
-                isClickable && fetchProcess
-                  ? "hover:shadow-md hover:scale-105"
-                  : ""
-              }
+              ${true ? "hover:shadow-md hover:scale-105" : ""}
               ${stepState === "current" ? "border-2" : "border"}
             `}
             style={{

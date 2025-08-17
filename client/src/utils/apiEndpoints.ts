@@ -1,4 +1,5 @@
-import { ProcessStatus } from "./processStatus";
+import { DashboardStatus, StreamEndpoint } from "@/core";
+import { API_CONFIG } from "@/config/env";
 
 // API 엔드포인트 구성
 export interface ApiEndpoint {
@@ -8,12 +9,10 @@ export interface ApiEndpoint {
 }
 
 // ProcessStatus별 API 엔드포인트 매핑
-export const API_ENDPOINTS: Record<
-  ProcessStatus,
-  { isStream: boolean; api: ApiEndpoint }
-> = {
+export const API_ENDPOINTS: Record<DashboardStatus, StreamEndpoint> = {
   TOPIC: {
     isStream: true,
+    updateNextStep: false,
     api: {
       path: "/workflow/stream/set-topic",
       method: "GET",
@@ -24,20 +23,28 @@ export const API_ENDPOINTS: Record<
   },
   DATA: {
     isStream: true,
+    updateNextStep: true,
     api: {
       path: "/workflow/stream/set-data",
       method: "GET",
     },
   },
   DATA_PROCESS: {
-    isStream: false,
+    // isStream: false,
+    isStream: true,
+    updateNextStep: true,
     api: {
-      path: "/workflow/visualization-type",
+      // path: "/workflow/visualization-type",
+      path: "/workflow/stream/code-generator",
       method: "GET",
+      params: {
+        visualization_type: "comparison",
+      },
     },
   },
   BUILD: {
     isStream: true,
+    updateNextStep: true,
     api: {
       path: "",
       method: "GET",
@@ -45,6 +52,7 @@ export const API_ENDPOINTS: Record<
   },
   DEPLOY: {
     isStream: true,
+    updateNextStep: true,
     api: {
       path: "",
       method: "GET",
@@ -53,38 +61,81 @@ export const API_ENDPOINTS: Record<
 };
 
 export const API_OPTIONS_ENDPOINTS: Record<
-  ProcessStatus,
-  Record<string, ApiEndpoint>
+  DashboardStatus,
+  Record<string, StreamEndpoint>
 > = {
   TOPIC: {
     "1": {
-      path: "/workflow/stream/set-data",
-      method: "GET",
+      isStream: true,
+      updateNextStep: true,
+      api: {
+        path: "/workflow/stream/set-data",
+        method: "GET",
+      },
     },
     "2": {
-      path: "/chat/stream/load-chat",
-      method: "GET",
+      isStream: true,
+      updateNextStep: false,
+      api: {
+        path: "/chat/stream/load-chat",
+        method: "GET",
+      },
     },
     "3": {
-      path: "/workflow/stream/set-topic",
-      method: "GET",
+      isStream: true,
+      updateNextStep: false,
+      api: {
+        path: "/workflow/stream/set-topic",
+        method: "GET",
+      },
     },
   },
   DATA: {
     "1": {
-      path: "/workflow/stream/process-data-selection",
-      method: "GET",
+      isStream: true,
+      updateNextStep: false,
+      api: {
+        path: "/workflow/stream/process-data-selection",
+        method: "GET",
+      },
     },
     "2": {
-      path: "/workflow/stream/process-data-selection",
-      method: "GET",
+      isStream: true,
+      updateNextStep: false,
+      api: {
+        path: "/workflow/stream/process-data-selection",
+        method: "GET",
+      },
     },
     "3": {
-      path: "/workflow/visualization-type",
-      method: "GET",
+      // isStream: false,
+      isStream: true,
+      updateNextStep: true,
+      api: {
+        // path: "/workflow/visualization-type",
+        path: "/workflow/stream/code-generator",
+        method: "GET",
+        params: {
+          visualization_type: "comparison",
+        },
+      },
     },
   },
-  DATA_PROCESS: {},
+  DATA_PROCESS: {
+    "2": {
+      // isStream: false,
+      isStream: true,
+      updateNextStep: true,
+      api: {
+        // path: "/workflow/visualization-type",
+        path: "/workflow/stream/code-generator",
+        method: "GET",
+        params: {
+          visualization_type: "comparison",
+        },
+      },
+    },
+  },
   BUILD: {},
   DEPLOY: {},
 };
@@ -95,9 +146,8 @@ export const getStreamHeaders = (): HeadersInit => ({
   "Cache-Control": "no-cache",
 });
 
-// API 생성 함수
-export const getApiResponse = (
-  serverUrl: string,
+// stream API 생성 함수
+export const getStreamApiResponse = (
   endpoint: ApiEndpoint,
   additionalParams?: Record<string, string>
 ): Promise<Response> => {
@@ -106,7 +156,7 @@ export const getApiResponse = (
     ...additionalParams,
   });
 
-  const apiUrl = `${serverUrl}${endpoint.path}?${params.toString()}`;
+  const apiUrl = `${API_CONFIG.BASE_URL}${endpoint.path}?${params.toString()}`;
 
   return fetch(apiUrl, {
     method: endpoint.method,
@@ -114,15 +164,19 @@ export const getApiResponse = (
   });
 };
 
-// 테이블 메타데이터 API 호출 함수
-export const fetchTableMetadata = async (
-  serverUrl: string,
-  threadId: string
-) => {
-  const url = `${serverUrl}/contents/meta?thread_id=${threadId}`;
-  console.log("📡 메타데이터 API 호출:", url);
+// API 생성 함수
+export const getApiResponse = async (
+  endpoint: ApiEndpoint,
+  additionalParams?: Record<string, string>
+): Promise<Response> => {
+  const params = new URLSearchParams({
+    ...endpoint.params,
+    ...additionalParams,
+  });
 
-  const response = await fetch(url, {
+  const apiUrl = `${API_CONFIG.BASE_URL}${endpoint.path}?${params.toString()}`;
+
+  const response = await fetch(apiUrl, {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
@@ -130,8 +184,8 @@ export const fetchTableMetadata = async (
   });
 
   if (!response.ok) {
-    throw new Error(`메타데이터 API 호출 실패: ${response.status}`);
+    throw new Error(`API 호출 실패: ${response.status}`);
   }
 
-  return response.json();
+  return response;
 };

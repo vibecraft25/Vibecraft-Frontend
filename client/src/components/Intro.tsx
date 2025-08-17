@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Typography, Card } from "antd";
-import { getGuidesections } from "./MainGuide";
+import { getGuidesections } from "./Guide";
 
 const { Title, Paragraph } = Typography;
 

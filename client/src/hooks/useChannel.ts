@@ -1,152 +1,219 @@
-import { useCallback } from "react";
-import { useChatStore, ChatItem } from "@/stores/chatStore";
-import { ProcessStatus } from "@/utils/processStatus";
+/**
+ * VibeCraft Channel Hook
+ * React hook for channel management operations
+ */
 
-export interface UseChannelReturn {
-  // 상태
-  chatItems: any[];
-  currentChannelId?: string;
-  lastThreadId?: string;
+import { useCallback, useEffect } from "react";
+import { useChannelActions, useChannelState } from "@/core/stores/channelStore";
+import type { DashboardStatus } from "@/core/types";
+import { PROCESS_STATUS_ORDER } from "@/core/types/channel";
 
-  // 채널 관리
-  createNewChannel: (channelId: string, submit: string) => void;
-  switchChannel: (channelId: string) => void;
-  updateChannel: (
-    channelId: string,
-    newThreadId: string,
-    processStatus: ProcessStatus,
-    message?: string
-  ) => Promise<void>;
-
-  // Store 액션들
-  storeChatChannel: (newItem: any) => void;
-  updateChatChannel: (
-    channelId: string,
-    newThreadId: string,
-    processStatus: ProcessStatus,
-    message?: string
-  ) => void;
-  deleteChatChannel: (channelId: string) => Promise<void>;
-  startNewChat: () => void;
-  saveCurrentMessages: (messages: any[], channelId: string) => Promise<void>;
-  loadChannelMessages: (channelId: string) => Promise<any[]>;
+interface UseChannelOptions {
+  autoLoad?: boolean;
+  onChannelSwitch?: (channelId: string) => void;
+  onStatusChange?: (status: DashboardStatus) => void;
 }
 
-export const useChannel = (): UseChannelReturn => {
-  // Zustand store 상태와 액션들
-  const chatItems = useChatStore((state) => state.chatItems);
-  const currentChannelId = useChatStore((state) => state.currentChannelId);
-  const lastThreadId = useChatStore((state) => state.lastThreadId);
-
+export const useChannel = (options: UseChannelOptions = {}) => {
   const {
-    switchChannel: switchCurrentChannel,
-    storeChatChannel,
-    updateChatChannel,
-    startNewChat: storeStartNewChat,
-    saveCurrentMessages,
-    deleteChatChannel,
-    loadChannelMessages,
-  } = useChatStore();
+    createChannel,
+    switchChannel,
+    deleteChannel,
+    updateChannelStatus,
+    loadChannels,
+  } = useChannelActions();
 
-  // 새 채널 생성
+  const channelState = useChannelState();
+
+  // Auto-load channels on mount
+  useEffect(() => {
+    if (options.autoLoad !== false) {
+      loadChannels();
+    }
+  }, [options.autoLoad, loadChannels]);
+
+  // Handle channel switch callback
+  useEffect(() => {
+    if (channelState.currentChannelId && options.onChannelSwitch) {
+      options.onChannelSwitch(channelState.currentChannelId);
+    }
+  }, [channelState.currentChannelId, options.onChannelSwitch]);
+
+  // Handle status change callback
+  useEffect(() => {
+    if (
+      channelState.currentChannel?.meta.currentStatus &&
+      options.onStatusChange
+    ) {
+      options.onStatusChange(channelState.currentChannel.meta.currentStatus);
+    }
+  }, [channelState.currentChannel?.meta.currentStatus, options.onStatusChange]);
+
   const createNewChannel = useCallback(
-    (channelId: string, submit: string) => {
-      console.log("🆕 새 채널 생성 시작 - channelId:", channelId);
-
-      const newChatItem: ChatItem = {
-        channelId: channelId,
-        lastThreadId: "", // 초기에는 비어있음, 첫 threadId 받으면 업데이트
-        steps: [],
-        processStatus: "TOPIC" as ProcessStatus,
-        process: {
-          TOPIC: [],
-          DATA: [],
-          DATA_PROCESS: [],
-          BUILD: [],
-          DEPLOY: [],
-        },
-        submit,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-
-      // Store에 채널 저장
-      storeChatChannel(newChatItem);
-
-      // zustand store의 currentChannelId 업데이트
-      switchCurrentChannel(channelId);
-
-      console.log("✅ 새 채널 생성 완료:", channelId);
-    },
-    [storeChatChannel, switchCurrentChannel]
-  );
-
-  // 채널 전환
-  const switchChannel = useCallback(
-    (channelId: string) => {
-      console.log("🔄 채널 전환:", channelId);
-      switchCurrentChannel(channelId);
-    },
-    [switchCurrentChannel]
-  );
-
-  // 채널에 새 threadId 추가 및 lastThreadId 업데이트
-  const updateChannel = useCallback(
-    async (
-      channelId: string,
-      newThreadId: string,
-      processStatus: ProcessStatus,
-      message?: string
-    ) => {
+    async (name: string, description: string) => {
       try {
-        console.log(
-          "🔄 채널 업데이트 시작:",
-          channelId,
-          "threadId:",
-          newThreadId,
-          "status:",
-          processStatus
-        );
+        const channelId = await createChannel(name, description);
 
-        // updateChatChannel로 새 threadId 추가 및 lastThreadId 업데이트
-        updateChatChannel(channelId, newThreadId, processStatus, message);
+        // Auto-switch to new channel
+        await switchChannel(channelId);
 
-        console.log(
-          "✅ 채널 업데이트 완료:",
-          channelId,
-          "threadId:",
-          newThreadId
-        );
+        return channelId;
       } catch (error) {
-        console.error("❌ 채널 업데이트 실패:", error);
+        console.error("Failed to create channel:", error);
+        throw error;
       }
     },
-    [updateChatChannel]
+    [createChannel, switchChannel]
   );
 
-  // 새 채팅 시작
-  const startNewChat = useCallback(() => {
-    console.log("🆕 새 채팅 시작");
-    storeStartNewChat();
-  }, [storeStartNewChat]);
+  const deleteChannelWithConfirm = useCallback(
+    async (channelId: string, skipConfirm = false) => {
+      if (!skipConfirm) {
+        const channel = channelState.channels.find(
+          (c) => c.meta.channelId === channelId
+        );
+        const confirmed = window.confirm(
+          `Are you sure you want to delete channel "${
+            channel?.meta.channelName || "Unknown"
+          }"? This action cannot be undone.`
+        );
+
+        if (!confirmed) {
+          return false;
+        }
+      }
+
+      try {
+        await deleteChannel(channelId);
+        return true;
+      } catch (error) {
+        console.error("Failed to delete channel:", error);
+        throw error;
+      }
+    },
+    [deleteChannel, channelState.channels]
+  );
+
+  const updateCurrentChannelStatus = useCallback(
+    async (status: DashboardStatus) => {
+      if (!channelState.currentChannelId) {
+        throw new Error("No active channel to update");
+      }
+
+      try {
+        await updateChannelStatus(channelState.currentChannelId, status);
+      } catch (error) {
+        console.error("Failed to update channel status:", error);
+        throw error;
+      }
+    },
+    [channelState.currentChannelId, updateChannelStatus]
+  );
+
+  const getNextProcessStatus = (current: DashboardStatus): DashboardStatus => {
+    const currentIndex = PROCESS_STATUS_ORDER.indexOf(current);
+    const nextIndex = currentIndex + 1;
+
+    // 마지막 단계인 경우 그대로 유지
+    if (nextIndex >= PROCESS_STATUS_ORDER.length) {
+      return current;
+    }
+
+    return PROCESS_STATUS_ORDER[nextIndex];
+  };
+
+  const updateCurrentChannelNextStep = useCallback(() => {
+    if (channelState.currentChannel) {
+      const current = channelState.currentChannel.meta.lastStatus;
+
+      const nextProcess = getNextProcessStatus(current);
+
+      if (nextProcess !== current) {
+        updateCurrentChannelStatus(nextProcess);
+        console.log("📊 다음 프로세스 단계로 진행:", current, "→", nextProcess);
+      }
+    }
+  }, [channelState.currentChannel]);
+
+  const switchToChannel = useCallback(
+    async (channelId: string) => {
+      try {
+        await switchChannel(channelId);
+        return true;
+      } catch (error) {
+        console.error("Failed to switch channel:", error);
+        return false;
+      }
+    },
+    [switchChannel]
+  );
+
+  const getChannelProgress = useCallback(() => {
+    const currentChannel = channelState.currentChannel;
+    if (!currentChannel) return null;
+
+    const statusOrder: DashboardStatus[] = [
+      "TOPIC",
+      "DATA",
+      "DATA_PROCESS",
+      "BUILD",
+      "DEPLOY",
+    ];
+
+    return {
+      last: currentChannel.meta.currentStatus,
+      current: currentChannel.meta.currentStatus,
+      isCompleted: currentChannel.meta.isCompleted,
+    };
+  }, [channelState.currentChannel]);
+
+  const getChannelsByStatus = useCallback(
+    (status?: DashboardStatus) => {
+      if (!status) return channelState.channels;
+
+      return channelState.channels.filter(
+        (channel) => channel.meta.currentStatus === status
+      );
+    },
+    [channelState.channels]
+  );
 
   return {
-    // 상태
-    chatItems,
-    currentChannelId,
-    lastThreadId,
+    // State
+    ...channelState,
 
-    // 채널 관리
-    createNewChannel,
-    switchChannel,
-    updateChannel,
+    // Enhanced actions
+    createChannel: createNewChannel,
+    switchChannel: switchToChannel,
+    deleteChannel: deleteChannelWithConfirm,
+    updateStatus: updateCurrentChannelStatus,
+    updateNextStep: updateCurrentChannelNextStep,
 
-    // Store 액션들
-    storeChatChannel,
-    updateChatChannel,
-    deleteChatChannel,
-    startNewChat,
-    saveCurrentMessages,
-    loadChannelMessages,
+    // Utility functions
+    getChannelProgress,
+    getChannelsByStatus,
+
+    // Computed values
+    hasChannels: channelState.channels.length > 0,
+    activeChannelName: channelState.currentChannel?.meta.channelName,
+    activeChannelStatus: channelState.currentChannel?.meta.currentStatus,
+    isChannelCompleted: channelState.currentChannel?.meta.isCompleted ?? false,
+    isChannelLoading: channelState.isChannelLoading, // 채널 전환 중 로딩 상태
+    isApiLoading: channelState.isApiLoading, // API 응답 대기 상태
+
+    // Channel statistics
+    stats: {
+      total: channelState.channels.length,
+      completed: channelState.channels.filter((c) => c.meta.isCompleted).length,
+      inProgress: channelState.channels.filter((c) => !c.meta.isCompleted)
+        .length,
+      byStatus: {
+        TOPIC: getChannelsByStatus("TOPIC").length,
+        DATA: getChannelsByStatus("DATA").length,
+        DATA_PROCESS: getChannelsByStatus("DATA_PROCESS").length,
+        BUILD: getChannelsByStatus("BUILD").length,
+        DEPLOY: getChannelsByStatus("DEPLOY").length,
+      },
+    },
   };
 };

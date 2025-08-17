@@ -21,26 +21,23 @@ const Menu = ({ menuList, onOptionSelect, prev, className }: MenuProps) => {
   // TODO : 호출 된 값이 있으면 isSubmit으로 버튼 비활성화
   const [isSumbit, setIsSubmit] = useState<boolean>(prev === true);
 
-  // const isOptionsMenu =
-  //   menuList.length > 0 && menuList[0].includes("[Options]");
-
-  // if (isOptionsMenu) {
-  // }
-
-  // return (
-  //   <div className={className}>
-  //     {menuList.map((menu: string, index: number) => (
-  //       <div key={`ai-menuitem-${index}`} className="menu-item mb-2">
-  //         <Text className="menu-text text-gray-700">{menu}</Text>
-  //       </div>
-  //     ))}
-  //   </div>
-  // );
-
+  let menuContent: string = "";
   const options: MenuOption[] = [];
 
   menuList.forEach((item, index) => {
-    if (index === 0) return;
+    if (item === "[Options]") {
+      menuContent = "진행을 선택해주세요.";
+      return;
+    }
+    if (index === 0) {
+      menuContent = item;
+      return;
+    }
+
+    if (index === 1 && !menuContent) {
+      menuContent = item;
+      return;
+    }
 
     const optionMatch = item.match(/^(\d+)\.\s*(.+)$/);
     if (optionMatch) {
@@ -79,7 +76,7 @@ const Menu = ({ menuList, onOptionSelect, prev, className }: MenuProps) => {
     <div className={`p-4 bg-transparent ${className || ""}`}>
       <div className="mb-3">
         <Text strong className="text-gray-800">
-          진행을 선택해주세요.
+          {menuContent}
         </Text>
       </div>
 

@@ -1,27 +1,36 @@
 import Menu, { MenuOption } from "./Menu";
-import { SSEMessage, ComponentType } from "@/hooks/useSSE";
 import Uploader from "./Uploader";
+import ColumnTable from "./ColumnTable";
+
+import { ChatMessage, ComponentType } from "@/core";
 import { UploadedFile } from "@/types/upload";
 
 interface ComponentRendererProps {
-  message: SSEMessage;
+  message: ChatMessage;
   onMenuOptionSelect: (option: MenuOption) => void;
   onUpdateUploadedFiles?: (files: UploadedFile[]) => void;
   onButtonClick?: () => void;
   onInputChange?: (value: string) => void;
+  selectedColumns?: string[];
+  setSelectedColumns?: (columns: string[]) => void;
 }
 
 const ComponentRenderer = ({
   message,
   onMenuOptionSelect,
   onUpdateUploadedFiles,
+  selectedColumns,
+  setSelectedColumns,
 }: ComponentRendererProps) => {
-  const renderComponent = (componentType: ComponentType, content: any) => {
+  const renderComponent = (
+    componentType: ComponentType,
+    componentData: any
+  ) => {
     switch (componentType) {
       case "MENU":
-        return Array.isArray(content) ? (
+        return Array.isArray(componentData) ? (
           <Menu
-            menuList={content}
+            menuList={componentData}
             onOptionSelect={onMenuOptionSelect}
             className="w-full"
           />
@@ -30,25 +39,37 @@ const ComponentRenderer = ({
       case "DATA_UPLOAD":
         return <Uploader onUpdateUploadedFiles={onUpdateUploadedFiles} />;
 
-      case "BUILD_RESULT":
+      case "DATA_TABLE":
         return (
-          <div className="w-full p-4 bg-green-50 border border-green-200 rounded">
-            <div className="text-green-800 font-medium mb-2">빌드 결과</div>
-            <div className="text-green-600 text-sm">
-              대시보드가 성공적으로 생성되었습니다.
-            </div>
-          </div>
+          <ColumnTable 
+            tableData={componentData} 
+            selectedColumns={selectedColumns}
+            setSelectedColumns={setSelectedColumns}
+          />
         );
 
-      case "DEPLOY_STATUS":
-        return (
-          <div className="w-full p-4 bg-purple-50 border border-purple-200 rounded">
-            <div className="text-purple-800 font-medium mb-2">배포 상태</div>
-            <div className="text-purple-600 text-sm">
-              배포가 진행 중입니다...
-            </div>
-          </div>
-        );
+      case "DATA_VISUALIZE":
+        return <>DATA_VISUALIZE</>;
+
+      // case "BUILD_RESULT":
+      //   return (
+      //     <div className="w-full p-4 bg-green-50 border border-green-200 rounded">
+      //       <div className="text-green-800 font-medium mb-2">빌드 결과</div>
+      //       <div className="text-green-600 text-sm">
+      //         대시보드가 성공적으로 생성되었습니다.
+      //       </div>
+      //     </div>
+      //   );
+
+      // case "DEPLOY_STATUS":
+      //   return (
+      //     <div className="w-full p-4 bg-purple-50 border border-purple-200 rounded">
+      //       <div className="text-purple-800 font-medium mb-2">배포 상태</div>
+      //       <div className="text-purple-600 text-sm">
+      //         배포가 진행 중입니다...
+      //       </div>
+      //     </div>
+      //   );
 
       default:
         console.warn(`Unknown component type: ${componentType}`);
@@ -59,7 +80,7 @@ const ComponentRenderer = ({
   return (
     <div className="text-gray-800">
       {message.componentType &&
-        renderComponent(message.componentType, message.content)}
+        renderComponent(message.componentType, message.componentData)}
     </div>
   );
 };
