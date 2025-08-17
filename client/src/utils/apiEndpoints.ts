@@ -1,4 +1,5 @@
-import { ProcessStatus } from "./processStatus";
+import { DashboardStatus } from "@/core";
+import { API_CONFIG } from "@/config/env";
 
 // API 엔드포인트 구성
 export interface ApiEndpoint {
@@ -9,7 +10,7 @@ export interface ApiEndpoint {
 
 // ProcessStatus별 API 엔드포인트 매핑
 export const API_ENDPOINTS: Record<
-  ProcessStatus,
+  DashboardStatus,
   { isStream: boolean; api: ApiEndpoint }
 > = {
   TOPIC: {
@@ -53,35 +54,53 @@ export const API_ENDPOINTS: Record<
 };
 
 export const API_OPTIONS_ENDPOINTS: Record<
-  ProcessStatus,
-  Record<string, ApiEndpoint>
+  DashboardStatus,
+  Record<string, { isStream: boolean; api: ApiEndpoint }>
 > = {
   TOPIC: {
     "1": {
-      path: "/workflow/stream/set-data",
-      method: "GET",
+      isStream: true,
+      api: {
+        path: "/workflow/stream/set-data",
+        method: "GET",
+      },
     },
     "2": {
-      path: "/chat/stream/load-chat",
-      method: "GET",
+      isStream: true,
+      api: {
+        path: "/chat/stream/load-chat",
+        method: "GET",
+      },
     },
     "3": {
-      path: "/workflow/stream/set-topic",
-      method: "GET",
+      isStream: true,
+      api: {
+        path: "/workflow/stream/set-topic",
+        method: "GET",
+      },
     },
   },
   DATA: {
     "1": {
-      path: "/workflow/stream/process-data-selection",
-      method: "GET",
+      isStream: true,
+      api: {
+        path: "/workflow/stream/process-data-selection",
+        method: "GET",
+      },
     },
     "2": {
-      path: "/workflow/stream/process-data-selection",
-      method: "GET",
+      isStream: true,
+      api: {
+        path: "/workflow/stream/process-data-selection",
+        method: "GET",
+      },
     },
     "3": {
-      path: "/workflow/visualization-type",
-      method: "GET",
+      isStream: false,
+      api: {
+        path: "/workflow/visualization-type",
+        method: "GET",
+      },
     },
   },
   DATA_PROCESS: {},
@@ -95,9 +114,8 @@ export const getStreamHeaders = (): HeadersInit => ({
   "Cache-Control": "no-cache",
 });
 
-// API 생성 함수
+// stream API 생성 함수
 export const getStreamApiResponse = (
-  serverUrl: string,
   endpoint: ApiEndpoint,
   additionalParams?: Record<string, string>
 ): Promise<Response> => {
@@ -106,7 +124,7 @@ export const getStreamApiResponse = (
     ...additionalParams,
   });
 
-  const apiUrl = `${serverUrl}${endpoint.path}?${params.toString()}`;
+  const apiUrl = `${API_CONFIG.BASE_URL}${endpoint.path}?${params.toString()}`;
 
   return fetch(apiUrl, {
     method: endpoint.method,
@@ -116,7 +134,6 @@ export const getStreamApiResponse = (
 
 // API 생성 함수
 export const getApiResponse = async (
-  serverUrl: string,
   endpoint: ApiEndpoint,
   additionalParams?: Record<string, string>
 ) => {
@@ -125,7 +142,7 @@ export const getApiResponse = async (
     ...additionalParams,
   });
 
-  const apiUrl = `${serverUrl}${endpoint.path}?${params.toString()}`;
+  const apiUrl = `${API_CONFIG.BASE_URL}${endpoint.path}?${params.toString()}`;
 
   const response = await fetch(apiUrl, {
     method: "GET",

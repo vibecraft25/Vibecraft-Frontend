@@ -1,11 +1,7 @@
 import { useState } from "react";
 import { Upload, Button, message as antMessage } from "antd";
 import { Upload as UploadIcon, FileText } from "lucide-react";
-import {
-  UploadedFile,
-  UploaderProps,
-  SUPPORTED_FILE_EXTENSIONS,
-} from "@/types/upload";
+import { UploaderProps, SUPPORTED_FILE_EXTENSIONS } from "@/types/upload";
 import { validateFile, formatUploadedFiles } from "@/utils/fileUtils";
 
 const Uploader = ({ onUpdateUploadedFiles }: UploaderProps) => {
@@ -87,19 +83,20 @@ const Uploader = ({ onUpdateUploadedFiles }: UploaderProps) => {
               </span>
             </div>
           ))}
-          {/* <Button
-            type="primary"
-            size="small"
-            className="mt-2"
-            onClick={() => {
-              // TODO: 파일 전송 로직 구현
-              antMessage.success("파일이 업로드되었습니다!");
-            }}
-          >
-            파일 전송
-          </Button> */}
         </div>
       )}
+      {/* <div className="mt-4">
+        <Button
+          type="primary"
+          onClick={() => {
+            // TODO: 파일 전송 로직 구현
+            antMessage.success("파일이 업로드되었습니다!");
+          }}
+          className="bg-blue-500 hover:bg-blue-600"
+        >
+          진행
+        </Button>
+      </div> */}
     </div>
   );
 };

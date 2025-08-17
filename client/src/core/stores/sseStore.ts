@@ -1,0 +1,412 @@
+/**
+ * VibeCraft SSE Store (Refactored)
+ * Simplified SSE connection state management
+ */
+
+import { create } from "zustand";
+import { devtools } from "zustand/middleware";
+import type {
+  SSEConnectionStatus,
+  SSEConfig,
+  SSEMessage,
+  DashboardStatus,
+} from "../types";
+import { ComponentType } from "../types";
+import { sseService } from "../services/sseService";
+import { MessageService, StreamService } from "../services";
+import { useChatStore } from "./chatStore";
+import { useChannelStore } from "./channelStore";
+import { useLoadingStore } from "./loadingStore";
+import type { StreamEndpoint } from "../services/messageService";
+
+interface SSEState {
+  // Connection state
+  status: SSEConnectionStatus;
+  isConnected: boolean;
+  reconnectAttempts: number;
+  lastError?: string;
+
+  // Current streaming state
+  isStreaming: boolean;
+  currentEventType?: string;
+  currentMessageId?: string;
+
+  // Configuration
+  config?: SSEConfig;
+
+  // Actions
+  connect: (config: SSEConfig) => void;
+  disconnect: () => void;
+  reconnect: () => void;
+  sendMessage: (message: string) => Promise<void>;
+  sendMessageToStatus: (
+    message: string,
+    status: DashboardStatus,
+    endpoint: StreamEndpoint,
+    additionalParams?: Record<string, string>
+  ) => Promise<void>;
+
+  // Internal state management
+  setStatus: (status: SSEConnectionStatus) => void;
+  setError: (error?: string) => void;
+  handleMessage: (message: SSEMessage) => void;
+
+  // Event handlers
+  handleAIEvent: (data: string, id?: string) => void;
+  handleMenuEvent: (data: string, id?: string) => void;
+  handleDataEvent: (data: string, id?: string) => void;
+  handleCompleteEvent: (data: string, id?: string) => void;
+
+  // Streaming management
+  startStreaming: (eventType: string) => void;
+  stopStreaming: () => void;
+}
+
+export const useSSEStore = create<SSEState>()(
+  devtools(
+    (set, get) => ({
+      // Initial state
+      status: "disconnected",
+      isConnected: false,
+      reconnectAttempts: 0,
+      isStreaming: false,
+
+      // Connect to SSE endpoint
+      connect: (config) => {
+        const store = get();
+
+        // Don't connect if already connected
+        if (store.isConnected) {
+          console.log("SSE already connected");
+          return;
+        }
+
+        set({ config });
+
+        sseService.connect(config, {
+          onMessage: (message) => {
+            store.handleMessage(message);
+          },
+          onError: (error) => {
+            store.setError(error);
+          },
+          onStatusChange: (status) => {
+            store.setStatus(status);
+          },
+          onRetry: (interval) => {
+            console.log(`SSE retry in ${interval}ms`);
+          },
+        });
+      },
+
+      // Disconnect from SSE
+      disconnect: () => {
+        sseService.disconnect();
+        set({
+          status: "disconnected",
+          isConnected: false,
+          isStreaming: false,
+          currentEventType: undefined,
+          currentMessageId: undefined,
+          lastError: undefined,
+        });
+      },
+
+      // Reconnect SSE
+      reconnect: () => {
+        const { config } = get();
+        if (config) {
+          get().disconnect();
+          setTimeout(() => {
+            get().connect(config);
+          }, 1000);
+        }
+      },
+
+      // Send message through MessageService
+      sendMessage: async (message) => {
+        try {
+          const { config } = get();
+          if (!config) {
+            throw new Error("No SSE configuration available");
+          }
+          await MessageService.sendMessage(config, message);
+        } catch (error) {
+          const errorMessage =
+            error instanceof Error ? error.message : "Unknown error";
+          get().setError(errorMessage);
+          throw error;
+        }
+      },
+
+      // Send message to specific status endpoint (simplified)
+      sendMessageToStatus: async (
+        message,
+        status,
+        endpoint,
+        additionalParams
+      ) => {
+        try {
+          // API 로딩 상태 시작
+          const loadingStore = useLoadingStore.getState();
+          loadingStore.setLoading("api", true);
+
+          if (endpoint.isStream) {
+            // 스트림 API 호출
+            const response = await MessageService.sendMessageToStatus(
+              message,
+              status,
+              endpoint,
+              additionalParams
+            );
+
+            if (response && response.body) {
+              get().stopStreaming(); // 상태 초기화
+
+              // StreamService를 사용한 스트림 처리
+              await StreamService.processStream(response, {
+                onAIEvent: (data, _id) => {
+                  const sseMessage = MessageService.transformSSEEvent(
+                    "ai",
+                    data,
+                    _id
+                  );
+                  get().handleMessage(sseMessage);
+                },
+                onMenuEvent: (data, _id) => {
+                  const sseMessage = MessageService.transformSSEEvent(
+                    "menu",
+                    data,
+                    _id
+                  );
+                  get().handleMessage(sseMessage);
+                },
+                onDataEvent: (data, _id) => {
+                  const sseMessage = MessageService.transformSSEEvent(
+                    "data",
+                    data,
+                    _id
+                  );
+                  get().handleMessage(sseMessage);
+                },
+                onCompleteEvent: (data, _id) => {
+                  const sseMessage = MessageService.transformSSEEvent(
+                    "complete",
+                    data,
+                    _id
+                  );
+                  get().handleMessage(sseMessage);
+                },
+              });
+            }
+          } else {
+            // 일반 메시지 전송
+            await MessageService.sendMessageToStatus(
+              message,
+              status,
+              endpoint,
+              additionalParams
+            );
+          }
+        } catch (error) {
+          const errorMessage =
+            error instanceof Error ? error.message : "Unknown error";
+          get().setError(errorMessage);
+          throw error;
+        } finally {
+          // API 로딩 상태 종료
+          const loadingStore = useLoadingStore.getState();
+          loadingStore.setLoading("api", false);
+        }
+      },
+
+      // Set connection status
+      setStatus: (status) => {
+        const connectionInfo = sseService.getConnectionInfo();
+
+        set({
+          status,
+          isConnected: status === "connected",
+          reconnectAttempts: connectionInfo.reconnectAttempts,
+        });
+
+        // Clear error on successful connection
+        if (status === "connected") {
+          set({ lastError: undefined });
+        }
+      },
+
+      // Set error state
+      setError: (error) => {
+        set({ lastError: error });
+      },
+
+      // Handle incoming SSE messages (simplified)
+      handleMessage: (message) => {
+        if (message.type === "ai" && message.event) {
+          const { event: eventType, data, id } = message.event;
+
+          switch (eventType) {
+            case "ai":
+              get().handleAIEvent(data, id);
+              break;
+
+            case "menu":
+              get().handleMenuEvent(data, id);
+              break;
+
+            case "data":
+              get().handleDataEvent(data, id);
+              break;
+
+            case "complete":
+              get().handleCompleteEvent(data, id);
+              break;
+
+            default:
+              console.log("Unknown SSE event type:", eventType);
+          }
+        }
+      },
+
+      // AI 이벤트 처리 (간소화)
+      handleAIEvent: (data: string, id?: string) => {
+        const chatStore = useChatStore.getState();
+        const { isStreaming, currentMessageId } = get();
+
+        if (!isStreaming || !currentMessageId) {
+          // Start new streaming message
+          const messageId = chatStore.startStreamingMessage(data);
+          set({
+            isStreaming: true,
+            currentEventType: "ai",
+            currentMessageId: messageId,
+          });
+        } else {
+          // Append to existing streaming message
+          chatStore.appendToMessage(currentMessageId, data);
+        }
+      },
+
+      // 메뉴 이벤트 처리 (간소화)
+      handleMenuEvent: (data: string, id?: string) => {
+        const chatStore = useChatStore.getState();
+
+        try {
+          const menuData = StreamService.processMenuEvent(data);
+          chatStore.addComponentMessage(ComponentType.MENU, menuData);
+        } catch (error) {
+          console.error("Failed to process menu event:", error);
+          chatStore.addMessage({
+            type: "ai",
+            content: data,
+          });
+        }
+
+        get().stopStreaming();
+      },
+
+      // 데이터 이벤트 처리 (간소화)
+      handleDataEvent: (data: string, id?: string) => {
+        const chatStore = useChatStore.getState();
+
+        try {
+          const processedData = StreamService.processDataEvent(data);
+
+          if (processedData.type === "table" && processedData.componentType) {
+            chatStore.addComponentMessage(
+              processedData.componentType,
+              processedData.data
+            );
+          }
+        } catch (error) {
+          console.error("Failed to process data event:", error);
+          chatStore.addMessage({
+            type: "ai",
+            content: `Data: ${data}`,
+          });
+        }
+      },
+
+      // 완료 이벤트 처리 (간소화)
+      handleCompleteEvent: (data: string, id?: string) => {
+        const chatStore = useChatStore.getState();
+        const { currentMessageId } = get();
+
+        // Finish current streaming message if exists
+        if (currentMessageId) {
+          chatStore.finishStreamingMessage(currentMessageId);
+        }
+
+        try {
+          const threadId = StreamService.processCompleteEvent(data);
+
+          const channelStore = useChannelStore.getState();
+          const currentChannel = channelStore.getCurrentChannel();
+          if (currentChannel) {
+            channelStore.updateChannelMeta(currentChannel.meta.channelId, {
+              threadId: threadId,
+              threadStatus: "READY",
+              lastActivity: new Date().toISOString(),
+            });
+          }
+        } catch (error) {
+          console.error("Failed to process complete event:", error);
+        }
+
+        get().stopStreaming();
+      },
+
+      // Start streaming state
+      startStreaming: (eventType) => {
+        set({
+          isStreaming: true,
+          currentEventType: eventType,
+        });
+      },
+
+      // Stop streaming state
+      stopStreaming: () => {
+        const { currentMessageId } = get();
+
+        if (currentMessageId) {
+          const chatStore = useChatStore.getState();
+          chatStore.finishStreamingMessage(currentMessageId);
+        }
+
+        set({
+          isStreaming: false,
+          currentEventType: undefined,
+          currentMessageId: undefined,
+        });
+      },
+    }),
+    {
+      name: "vibecraft-sse-store",
+    }
+  )
+);
+
+// Helper hooks
+export const useSSEActions = () => {
+  const store = useSSEStore();
+  return {
+    connect: store.connect,
+    disconnect: store.disconnect,
+    reconnect: store.reconnect,
+    sendMessage: store.sendMessage,
+    sendMessageToStatus: store.sendMessageToStatus,
+  };
+};
+
+export const useSSEState = () => {
+  const store = useSSEStore();
+  return {
+    status: store.status,
+    isConnected: store.isConnected,
+    isStreaming: store.isStreaming,
+    reconnectAttempts: store.reconnectAttempts,
+    lastError: store.lastError,
+    currentEventType: store.currentEventType,
+  };
+};

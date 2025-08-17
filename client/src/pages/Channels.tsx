@@ -1,35 +1,33 @@
+import { useEffect } from "react";
 import { Button, Typography, Tooltip } from "antd";
 import { MessageSquare, Plus, Calendar } from "lucide-react";
-import { useChatStore } from "@/stores/chatStore";
-import { useEffect } from "react";
+
+import { Channel } from "@/core";
 
 const { Text } = Typography;
-export interface ChattingsProps {
+export interface ChannelsProps {
   className?: string;
-  channelId?: string;
-  switchChannel: (channelId: string) => void;
-  onNewChat?: () => void;
+  channels: Channel[];
+  createChannel: (name: string, description?: string) => Promise<string>;
+  switchChannel: (channelId: string) => Promise<boolean>;
 }
 
-const Chattings = ({
+const Channels = ({
   className = "",
-  channelId,
+  channels,
+  createChannel,
   switchChannel,
-  onNewChat,
-}: ChattingsProps) => {
-  // Zustand store에서 chatItems 가져오기 - selector 패턴 사용
-  const chatItems = useChatStore((state) => state.chatItems);
+}: ChannelsProps) => {
+  // Zustand store에서 channels 가져오기 - selector 패턴 사용
+  // const channels = useChatStore((state) => state.channels);
 
-  // chatItems 로드 상태 디버깅
+  // channels 로드 상태 디버깅
   useEffect(() => {
-    console.log("💬 Chattings.tsx chatItems 상태:", {
-      length: chatItems.length,
-      items: chatItems.map((item) => ({
-        id: item.channelId,
-        submit: item.submit,
-      })),
+    console.log("💬 Channels.tsx channels 상태:", {
+      length: channels.length,
+      items: channels,
     });
-  }, [chatItems]);
+  }, [channels]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -43,8 +41,9 @@ const Chattings = ({
     return date.toLocaleDateString("ko-KR");
   };
 
-  const createNewChannel = () => {
-    onNewChat?.();
+  const handleCreateChannel = async () => {
+    // 주제 요약 or 설명 기입
+    await createChannel("NewChannel", "새로운 채팅을 시작하세요.");
   };
 
   return (
@@ -54,7 +53,7 @@ const Chattings = ({
         <Button
           type="primary"
           icon={<Plus className="w-4 h-4" />}
-          onClick={createNewChannel}
+          onClick={handleCreateChannel}
           className="w-full bg-gradient-to-r from-purple-500 to-blue-500 border-0 rounded-lg"
         >
           새 채팅 시작
@@ -63,19 +62,19 @@ const Chattings = ({
 
       {/* 채팅 채널 목록 */}
       <div className="flex-1 overflow-y-auto">
-        {chatItems.length > 0 ? (
+        {channels.length > 0 ? (
           <div className="space-y-1">
-            {chatItems.map((item) => (
+            {channels.map(({ meta, isActive }) => (
               <div
-                key={item.channelId}
+                key={meta.channelId}
                 className={`cursor-pointer transition-all duration-200 rounded-lg mx-3 px-3 py-3 group hover:bg-gray-100 ${
-                  item.channelId === channelId
+                  isActive
                     ? "bg-gradient-to-r from-purple-50 to-blue-50 border-l-3 border-purple-500"
                     : "border border-gray-100 bg-gray-50"
                 }`}
                 onClick={() => {
-                  console.log("📱 채팅 항목 클릭:", item.channelId);
-                  switchChannel(item.channelId);
+                  console.log("📱 채팅 항목 클릭:", meta.channelId);
+                  switchChannel(meta.channelId);
                 }}
               >
                 <div className="flex items-start justify-between">
@@ -83,22 +82,20 @@ const Chattings = ({
                     {/* 제목 */}
                     <div className="mb-2">
                       <Text
-                        strong={item.channelId === channelId}
+                        strong={isActive}
                         className={`text-sm line-clamp-2 ${
-                          item.channelId === channelId
-                            ? "text-purple-700"
-                            : "text-gray-800"
+                          isActive ? "text-purple-700" : "text-gray-800"
                         }`}
-                        title={item.submit}
+                        title={meta.description}
                       >
-                        {item.submit}
+                        {meta.description}
                       </Text>
                     </div>
 
                     {/* 날짜 */}
                     <div className="flex items-center text-xs text-gray-400">
                       <Calendar className="w-3 h-3 mr-1 flex-shrink-0" />
-                      <span>{formatDate(item.updatedAt)}</span>
+                      <span>{formatDate(meta.updatedAt)}</span>
                     </div>
                   </div>
 
@@ -130,7 +127,7 @@ const Chattings = ({
             </Text>
             <Button
               type="link"
-              onClick={createNewChannel}
+              onClick={handleCreateChannel}
               className="text-purple-600 hover:text-purple-700 p-0"
             >
               첫 번째 채팅을 시작해보세요
@@ -142,4 +139,4 @@ const Chattings = ({
   );
 };
 
-export default Chattings;
+export default Channels;

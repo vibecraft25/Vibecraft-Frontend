@@ -46,7 +46,5 @@ export type ThreadState =
   | "RECONNECTING" // 연결 끊어져서 재연결 시도 중
   | "ERROR"; // 오류 상태, 재시도 가능
 
-export type InputType = "TEXT";
-
 // 프로세스 상태 타입 정의 (구현은 utils/processStatus.ts로 이동)
 export type ProcessStepState = "completed" | "current" | "editing" | "pending";

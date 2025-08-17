@@ -1,55 +1,65 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useCallback, useRef } from "react";
 import { Card, Typography, Empty, Spin } from "antd";
 import { MessageSquare, User, Bot } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import remarkBreaks from "remark-breaks";
 
-import { SSEMessage } from "@/hooks/useSSE";
+// import { SSEMessage } from "@/hooks/useSSE";
+import {
+  ChannelMeta,
+  ChatMessage,
+  ComponentType,
+  useChatActions,
+  useChatState,
+} from "@/core";
+
 import { ThreadState } from "@/types/session";
-import { UploadedFile } from "@/types/upload";
 
-import Process from "../Process";
-import ComponentRenderer from "./ComponentRenderer";
+import ComponentRenderer from "@/components/chat/ComponentRenderer";
+import { MenuOption } from "@/components/chat/Menu";
+import { useFileUpload } from "@/hooks/useFileUpload";
+import { useSSE } from "@/hooks";
+import { API_OPTIONS_ENDPOINTS } from "@/utils/apiEndpoints";
 
 const { Text } = Typography;
 
 interface ChatViewProps {
-  messages: SSEMessage[];
+  channelMeta: ChannelMeta;
   isLoading?: boolean;
-  channelId?: string;
-  threadState?: ThreadState;
-  onMenuOptionSelect: (selectedOption: any) => void;
-  onUpdateUploadedFiles?: (files: UploadedFile[]) => void;
-  className?: string;
-  maxHeight?: string;
+  updateNextStep: () => void;
 }
 
 const ChatView = ({
-  messages,
+  channelMeta,
   isLoading = false,
-  channelId,
-  threadState,
-  onMenuOptionSelect,
-  onUpdateUploadedFiles,
-  className = "",
-  maxHeight = "400px",
+  updateNextStep,
 }: ChatViewProps) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const isUserScrollingRef = useRef(false);
 
+  const { messages, isStreaming, currentEventType } = useChatState();
+  const { addMessage } = useChatActions();
+  const { sendMessage } = useSSE();
+
+  // 파일 업로드 훅 사용
+  const { updateFiles } = useFileUpload();
+
   // 메시지 업데이트 디버깅
-  useEffect(() => {
-    console.log("🔄 ChatView messages 업데이트:", {
-      length: messages.length,
-      channelId,
-      timestamp: new Date().toISOString(),
-      messages: messages.map((m) => ({
-        content:
-          typeof m.content === "string" ? m.content.slice(0, 50) : "array",
-        type: m.type,
-      })),
-    });
-  }, [messages, channelId]);
+  // useEffect(() => {
+  //   console.log("🔄 ChatView messages 업데이트:", {
+  //     length: messages.length,
+  //     channelId,
+  //     timestamp: new Date().toISOString(),
+  //     messages: messages.map((m) => ({
+  //       content:
+  //         typeof m.event.data === "string"
+  //           ? m.event.data.slice(0, 50)
+  //           : "array",
+  //       type: m.event.event,
+  //     })),
+  //   });
+  // }, [messages, channelId]);
 
   // 스크롤 이벤트 핸들러
   const handleScroll = () => {
@@ -61,6 +71,106 @@ const ChatView = ({
     }
   };
 
+  const handleMenuOptionSelect = useCallback(
+    async (selectedOption: MenuOption) => {
+      console.log("📋 메뉴 옵션 선택:", selectedOption);
+
+      // TODO : 이전 선택값 저장 로직 추가
+
+      if (channelMeta.lastStatus === "TOPIC") {
+        switch (selectedOption.value) {
+          case "1":
+            // type: "ai" | "human" | "component";
+            // componentType?: ComponentType;
+            // componentData?: any;
+            // // metadata?: {
+            // //   threadId?: string;
+            // //   isStreaming?: boolean;
+            // //   sseEventType?: "ai" | "menu" | "data" | "complete";
+            // // };
+
+            addMessage({
+              type: "human",
+              content: selectedOption.label,
+            });
+            updateNextStep();
+            addMessage({
+              type: "ai",
+              componentType: ComponentType.DATA_UPLOAD,
+            });
+            break;
+          case "2":
+            break;
+          case "3":
+            break;
+          default:
+            break;
+        }
+      } else if (channelMeta.lastStatus === "DATA") {
+        // addMessage({
+        //   type: "human",
+        //   content: selectedOption.label,
+        // });
+        updateNextStep();
+        debugger;
+        switch (selectedOption.value) {
+          case "1":
+            // 추천 항목 데이터 컬럼명으로 전달
+            await sendMessage(selectedOption.label, channelMeta.lastStatus, {
+              endpoint: API_OPTIONS_ENDPOINTS.DATA[selectedOption.value],
+            });
+            break;
+          case "2":
+            // 선택 항목 데이터 컬럼명으로 전달
+            await sendMessage(selectedOption.label, channelMeta.lastStatus, {
+              endpoint: API_OPTIONS_ENDPOINTS.DATA[selectedOption.value],
+            });
+            break;
+          case "3":
+            // 시각화 방식 추천 (가공 건너뜀)
+            await sendMessage(selectedOption.label, channelMeta.lastStatus, {
+              endpoint: API_OPTIONS_ENDPOINTS.DATA[selectedOption.value],
+              additionalParams: {
+                thread_id: channelMeta.threadId ?? "",
+              },
+            });
+            break;
+          default:
+            break;
+        }
+      } else if (channelMeta.lastStatus === "DATA_PROCESS") {
+        // addMessage({
+        //   type: "human",
+        //   content: selectedOption.label,
+        // });
+        // updateNextStep();
+        // switch (selectedOption.value) {
+        //   case "1":
+        //     // 추천 항목 데이터 컬럼명으로 전달
+        //     debugger;
+        //     break;
+        //   case "2":
+        //     // 선택 항목 데이터 컬럼명으로 전달
+        //     break;
+        //   case "3":
+        //     // 시각화 방식 추천 (가공 건너뜀)
+        //     debugger;
+        //     break;
+        //   default:
+        //     break;
+        // }
+      }
+    },
+    [channelMeta]
+  );
+
+  const handleUpdateUploadedFiles = useCallback(
+    (files: any) => {
+      updateFiles(files);
+    },
+    [updateFiles]
+  );
+
   // 새 메시지가 오면 스크롤을 아래로 (사용자가 스크롤을 올린 상태가 아닐 때만)
   useEffect(() => {
     if (!isUserScrollingRef.current) {
@@ -68,7 +178,7 @@ const ChatView = ({
     }
   }, [messages]);
 
-  const formatTime = (timestamp: Date) => {
+  const formatTime = (timestamp: Date | string) => {
     return new Date(timestamp).toLocaleTimeString("ko-KR", {
       hour: "2-digit",
       minute: "2-digit",
@@ -78,13 +188,10 @@ const ChatView = ({
   // 메시지가 없고 로딩 중이 아닐 때
   if (messages.length === 0 && !isLoading) {
     // IDLE 상태 (새 채팅 시작)와 기타 상태 구분
-    const isNewChat = threadState === "IDLE";
+    const isNewChat = channelMeta.threadStatus === "IDLE";
 
     return (
-      <div
-        className={`flex items-center justify-center ${className}`}
-        style={{ height: maxHeight }}
-      >
+      <div className={`flex items-center justify-center h-full`}>
         <Empty
           image={<MessageSquare className="w-16 h-16 text-gray-300" />}
           description={
@@ -92,14 +199,14 @@ const ChatView = ({
               <p className="text-gray-500 mb-2">
                 {isNewChat
                   ? "새로운 채팅을 시작하세요"
-                  : channelId
+                  : channelMeta.channelId
                   ? "대화 히스토리가 없습니다"
                   : "세션을 선택하세요"}
               </p>
               <p className="text-sm text-gray-400">
                 {isNewChat
                   ? "아래 입력창에 메시지를 입력해 채팅을 시작하세요."
-                  : channelId
+                  : channelMeta.channelId
                   ? "아래 입력창에 메시지를 입력해보세요."
                   : "사이드바에서 채팅 세션을 선택하거나 새로 시작하세요."}
               </p>
@@ -119,7 +226,7 @@ const ChatView = ({
     >
       {messages.map((message, idx) => (
         <div
-          key={`ChatView-${channelId}-Chat-${idx}`}
+          key={`ChatView-${channelMeta.channelId}-Chat-${idx}`}
           className={`flex items-start space-x-3 ${
             message.type === "human" ? "flex-row-reverse space-x-reverse" : ""
           }`}
@@ -184,15 +291,13 @@ const ChatView = ({
               {message.componentType ? (
                 <ComponentRenderer
                   message={message}
-                  onMenuOptionSelect={onMenuOptionSelect}
-                  onUpdateUploadedFiles={onUpdateUploadedFiles}
+                  onMenuOptionSelect={handleMenuOptionSelect}
+                  onUpdateUploadedFiles={handleUpdateUploadedFiles}
                 />
               ) : (
                 <div className="text-gray-800 prose prose-sm max-w-none">
-                  <ReactMarkdown>
-                    {Array.isArray(message.content)
-                      ? message.content.join("\n")
-                      : message.content}
+                  <ReactMarkdown remarkPlugins={[remarkBreaks]}>
+                    {message.content}
                   </ReactMarkdown>
                 </div>
               )}
