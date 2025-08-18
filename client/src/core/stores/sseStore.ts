@@ -43,8 +43,7 @@ interface SSEState {
   connect: (config: SSEConfig) => void;
   disconnect: () => void;
   reconnect: () => void;
-  sendMessage: (message: string) => Promise<void>;
-  sendMessageToStatus: (
+  sendMessage: (
     message: string,
     status: DashboardStatus,
     endpoint: StreamEndpoint,
@@ -136,29 +135,8 @@ export const useSSEStore = create<SSEState>()(
         }
       },
 
-      // Send message through MessageService
-      sendMessage: async (message) => {
-        try {
-          const { config } = get();
-          if (!config) {
-            throw new Error("No SSE configuration available");
-          }
-          await MessageService.sendMessage(config, message);
-        } catch (error) {
-          const errorMessage =
-            error instanceof Error ? error.message : "Unknown error";
-          get().setError(errorMessage);
-          throw error;
-        }
-      },
-
       // Send message to specific status endpoint (simplified)
-      sendMessageToStatus: async (
-        message,
-        status,
-        endpoint,
-        additionalParams
-      ) => {
+      sendMessage: async (message, status, endpoint, additionalParams) => {
         try {
           // API 로딩 상태 시작
           const loadingStore = useLoadingStore.getState();
@@ -166,7 +144,7 @@ export const useSSEStore = create<SSEState>()(
 
           if (endpoint.isStream) {
             // 스트림 API 호출
-            const response = await MessageService.sendMessageToStatus(
+            const response = await MessageService.sendMessage(
               message,
               status,
               endpoint,
@@ -202,7 +180,7 @@ export const useSSEStore = create<SSEState>()(
                   );
                   get().handleMessage(sseMessage);
                 },
-                oErrorEvent: (data, _id) => {
+                onErrorEvent: (data, _id) => {
                   const sseMessage = MessageService.transformSSEEvent(
                     "error",
                     data,
@@ -223,7 +201,7 @@ export const useSSEStore = create<SSEState>()(
             }
           } else {
             // 일반 메시지 전송
-            const restMessage = await MessageService.sendMessageToStatus(
+            const restMessage = await MessageService.sendMessage(
               message,
               status,
               endpoint,
@@ -237,18 +215,11 @@ export const useSSEStore = create<SSEState>()(
                   const responseData = await restMessage.json();
                   if (responseData?.recommendations) {
                     const chatStore = useChatStore.getState();
-                    const visualizationRecommendations =
-                      StreamService.processWorkflowVisualizationResponse(
-                        responseData
-                      );
 
-                    // 각 추천사항을 개별 컴포넌트로 추가
-                    visualizationRecommendations.forEach((recommendation) => {
-                      chatStore.addComponentMessage(
-                        ComponentType.DATA_VISUALIZE,
-                        recommendation
-                      );
-                    });
+                    chatStore.addComponentMessage(
+                      ComponentType.DATA_VISUALIZE,
+                      responseData.recommendations
+                    );
                   }
                 } catch (jsonError) {
                   console.error("Failed to parse response JSON:", jsonError);
@@ -482,7 +453,6 @@ export const useSSEActions = () => {
     disconnect: store.disconnect,
     reconnect: store.reconnect,
     sendMessage: store.sendMessage,
-    sendMessageToStatus: store.sendMessageToStatus,
     clearError: store.clearError,
     handleStreamError: store.handleStreamError,
   };

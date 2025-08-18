@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import { Button } from "antd";
 import { Database } from "lucide-react";
 
@@ -23,6 +24,10 @@ const Main = () => {
   } = useChannel({
     autoLoad: true,
   });
+
+  //   const updateNextStepCallback = useCallback(() => {
+  //   updateNextStep();
+  // }, [updateNextStep]);
   const { sendMessage } = useSSE({ updateNextStep: updateNextStep });
 
   const progress = getChannelProgress();

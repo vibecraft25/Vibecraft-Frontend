@@ -30,23 +30,18 @@ export const API_ENDPOINTS: Record<DashboardStatus, StreamEndpoint> = {
     },
   },
   DATA_PROCESS: {
-    // isStream: false,
-    isStream: true,
+    isStream: false,
     updateNextStep: true,
     api: {
-      // path: "/workflow/visualization-type",
-      path: "/workflow/stream/code-generator",
+      path: "/workflow/visualization-type",
       method: "GET",
-      params: {
-        visualization_type: "comparison",
-      },
     },
   },
   BUILD: {
     isStream: true,
     updateNextStep: true,
     api: {
-      path: "",
+      path: "/workflow/stream/code-generator",
       method: "GET",
     },
   },
@@ -108,31 +103,21 @@ export const API_OPTIONS_ENDPOINTS: Record<
       },
     },
     "3": {
-      // isStream: false,
-      isStream: true,
+      isStream: false,
       updateNextStep: true,
       api: {
-        // path: "/workflow/visualization-type",
-        path: "/workflow/stream/code-generator",
+        path: "/workflow/visualization-type",
         method: "GET",
-        params: {
-          visualization_type: "comparison",
-        },
       },
     },
   },
   DATA_PROCESS: {
     "2": {
-      // isStream: false,
-      isStream: true,
+      isStream: false,
       updateNextStep: true,
       api: {
-        // path: "/workflow/visualization-type",
-        path: "/workflow/stream/code-generator",
+        path: "/workflow/visualization-type",
         method: "GET",
-        params: {
-          visualization_type: "comparison",
-        },
       },
     },
   },

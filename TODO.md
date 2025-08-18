@@ -1,0 +1,2 @@
+- 채널 변경 시, sse 종료 / prompt 초기화 (Main 초기화)
+- 새로고침 시, 채팅 history 저장

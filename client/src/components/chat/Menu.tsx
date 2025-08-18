@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Radio, Typography, Button } from "antd";
 import type { RadioChangeEvent } from "antd";
+import { useChatActions } from "@/core";
 
 const { Text } = Typography;
 
@@ -17,24 +18,45 @@ export interface MenuProps {
 }
 
 const Menu = ({ menuList, onOptionSelect, prev, className }: MenuProps) => {
+  const { updateMessage } = useChatActions();
+
   const [selectedOption, setSelectedOption] = useState<MenuOption | null>(null);
-  // TODO : 호출 된 값이 있으면 isSubmit으로 버튼 비활성화
   const [isSumbit, setIsSubmit] = useState<boolean>(prev === true);
 
   let menuContent: string = "";
+  let menuFlag:
+    | {
+        __type: string;
+        id: string;
+        selected: string;
+      }
+    | undefined = undefined;
+
   const options: MenuOption[] = [];
 
   menuList.forEach((item, index) => {
+    try {
+      if (index === 0) {
+        const parsed = JSON.parse(item);
+        if (parsed?.__type === "MENU-FLAG") {
+          menuFlag = parsed;
+          return;
+        }
+      }
+    } catch {
+      // JSON이 아니면 계속 진행
+    }
+
     if (item === "[Options]") {
       menuContent = "진행을 선택해주세요.";
       return;
     }
-    if (index === 0) {
+    if (index === 1) {
       menuContent = item;
       return;
     }
 
-    if (index === 1 && !menuContent) {
+    if (index === 2 && !menuContent) {
       menuContent = item;
       return;
     }
@@ -59,18 +81,37 @@ const Menu = ({ menuList, onOptionSelect, prev, className }: MenuProps) => {
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = useCallback(() => {
     if (onOptionSelect && selectedOption) {
+      if (menuFlag) {
+        updateMessage(menuFlag.id, {
+          componentData: [
+            JSON.stringify({ ...menuFlag, selected: selectedOption.value }),
+            ...menuList.slice(1),
+          ],
+        });
+      }
       onOptionSelect(selectedOption);
       setIsSubmit(true);
     }
-  };
+  }, [menuFlag]);
 
   useEffect(() => {
     if (options.length > 0 && !selectedOption) {
+      if (menuFlag && menuFlag.selected !== "") {
+        const _selected = menuFlag.selected;
+        const findOption = options.find((_find) => _find.value === _selected);
+
+        if (findOption) {
+          setIsSubmit(true);
+          setSelectedOption(findOption);
+          return;
+        }
+      }
+      setIsSubmit(false);
       setSelectedOption(options[0]);
     }
-  }, [options.length]);
+  }, [options.length, menuFlag]);
 
   return (
     <div className={`p-4 bg-transparent ${className || ""}`}>
@@ -84,6 +125,7 @@ const Menu = ({ menuList, onOptionSelect, prev, className }: MenuProps) => {
         <div className="mb-4">
           <Radio.Group
             value={selectedOption?.value}
+            disabled={isSumbit}
             onChange={handleRadioChange}
             className="w-full"
           >

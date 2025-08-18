@@ -3,7 +3,7 @@
  * Handles message sending, receiving, and transformation logic
  */
 
-import type { SSEConfig, SSEMessage, DashboardStatus } from "../types";
+import type { SSEMessage, DashboardStatus } from "../types";
 import {
   getStreamApiResponse,
   ApiEndpoint,
@@ -24,37 +24,9 @@ export interface StreamEndpoint {
 
 export class MessageService {
   /**
-   * Send regular HTTP message
-   */
-  static async sendMessage(config: SSEConfig, message: string): Promise<void> {
-    if (!config) {
-      throw new Error("No configuration available for sending message");
-    }
-
-    try {
-      const response = await fetch(`${config.url}/send`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...config.headers,
-        },
-        credentials: config.withCredentials ? "include" : "same-origin",
-        body: JSON.stringify({ message }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-    } catch (error) {
-      console.error("Failed to send message:", error);
-      throw error;
-    }
-  }
-
-  /**
    * Send message to specific status endpoint with streaming support
    */
-  static async sendMessageToStatus(
+  static async sendMessage(
     message: string,
     _status: DashboardStatus,
     endpoint: StreamEndpoint,

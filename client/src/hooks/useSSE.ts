@@ -6,10 +6,9 @@
 import { useEffect, useCallback, useRef, useMemo } from "react";
 import { useSSEActions, useSSEState } from "@/core/stores/sseStore";
 import type { DashboardStatus, SSEConfig } from "@/core/types";
-import { StreamEndpoint, useChannelActions, useChatActions } from "@/core";
+import { StreamEndpoint, useChatActions } from "@/core";
 import { API_CONFIG } from "@/config/env";
-import { API_ENDPOINTS, ApiEndpoint } from "@/utils/apiEndpoints";
-import { useChannel } from "./useChannel";
+import { API_ENDPOINTS } from "@/utils/apiEndpoints";
 
 interface UseSSEOptions {
   updateNextStep?: () => void;
@@ -22,8 +21,7 @@ interface UseSSEOptions {
 }
 
 export const useSSE = (options: UseSSEOptions = {}) => {
-  const { connect, disconnect, reconnect, sendMessageToStatus } =
-    useSSEActions();
+  const { connect, disconnect, reconnect, sendMessage } = useSSEActions();
   const { addMessage } = useChatActions();
 
   const sseState = useSSEState();
@@ -135,17 +133,16 @@ export const useSSE = (options: UseSSEOptions = {}) => {
           throw new Error(`Unknown status: ${status}`);
         }
 
-        // 2. sseStore의 sendMessageToStatus에서 모든 처리 담당
-        await sendMessageToStatus(
-          message,
-          status,
-          _endpoint,
-          props?.additionalParams
-        );
+        // 2. sseStore의 sendMessage에서 모든 처리 담당
+        await sendMessage(message, status, _endpoint, props?.additionalParams);
 
-        if (_endpoint.updateNextStep && options.updateNextStep) {
+        // if (_endpoint.updateNextStep && options.updateNextStep) {
+        //   debugger;
+        //   options.updateNextStep();
+        // }
+        if (_endpoint.updateNextStep && optionsRef.current.updateNextStep) {
           debugger;
-          options.updateNextStep();
+          optionsRef.current.updateNextStep();
         }
 
         return true;

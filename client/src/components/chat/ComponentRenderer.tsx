@@ -4,15 +4,15 @@ import ColumnTable from "./ColumnTable";
 
 import { ChatMessage, ComponentType } from "@/core";
 import { UploadedFile } from "@/types/upload";
+import Visualize from "./Visualize";
+// import Visualize from "./Visualize";
 
 interface ComponentRendererProps {
   message: ChatMessage;
+  selectedColumns: string[];
+  setSelectedColumns: (columns: string[]) => void;
   onMenuOptionSelect: (option: MenuOption) => void;
-  onUpdateUploadedFiles?: (files: UploadedFile[]) => void;
-  onButtonClick?: () => void;
-  onInputChange?: (value: string) => void;
-  selectedColumns?: string[];
-  setSelectedColumns?: (columns: string[]) => void;
+  onUpdateUploadedFiles: (files: UploadedFile[]) => void;
 }
 
 const ComponentRenderer = ({
@@ -41,15 +41,20 @@ const ComponentRenderer = ({
 
       case "DATA_TABLE":
         return (
-          <ColumnTable 
-            tableData={componentData} 
+          <ColumnTable
+            tableData={componentData}
             selectedColumns={selectedColumns}
             setSelectedColumns={setSelectedColumns}
           />
         );
 
       case "DATA_VISUALIZE":
-        return <>DATA_VISUALIZE</>;
+        return (
+          <Visualize
+            visualizeList={componentData}
+            onOptionSelect={onMenuOptionSelect}
+          />
+        );
 
       // case "BUILD_RESULT":
       //   return (
