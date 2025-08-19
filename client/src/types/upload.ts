@@ -11,8 +11,15 @@ export interface UploadedFile {
 }
 
 // 지원되는 파일 확장자
-export const SUPPORTED_FILE_EXTENSIONS = [".csv", ".sql", ".json", ".xlsx", ".xls", ".txt"] as const;
-export type SupportedFileExtension = typeof SUPPORTED_FILE_EXTENSIONS[number];
+export const SUPPORTED_FILE_EXTENSIONS = [
+  ".csv",
+  ".sql",
+  ".json",
+  ".xlsx",
+  ".xls",
+  ".txt",
+] as const;
+export type SupportedFileExtension = (typeof SUPPORTED_FILE_EXTENSIONS)[number];
 
 // 파일 타입별 정보
 export interface FileTypeInfo {
@@ -43,19 +50,6 @@ export interface FileManagementCallbacks {
 export interface UploaderProps extends FileManagementCallbacks {
   disabled?: boolean;
   maxFileSize?: number; // MB 단위
-}
-
-// FileCard 컴포넌트 Props
-export interface FileCardProps {
-  file: UploadedFile;
-  onRemove: (fileUid: string) => void;
-}
-
-// UploadedFilesList 컴포넌트 Props
-export interface UploadedFilesListProps {
-  files: UploadedFile[];
-  onRemoveFile: (fileUid: string) => void;
-  onClearAll: () => void;
 }
 
 // 파일 크기 포맷팅 유틸리티 타입

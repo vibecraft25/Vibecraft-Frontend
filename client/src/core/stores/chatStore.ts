@@ -16,6 +16,7 @@ interface ChatState {
 
   // Actions
   addMessage: (message: Omit<ChatMessage, "id" | "timestamp">) => string;
+  addHistoryMessage: (message: ChatMessage) => string;
   updateMessage: (id: string, updates: Partial<ChatMessage>) => void;
   clearMessages: () => void;
   setStreaming: (streaming: boolean, eventType?: string) => void;
@@ -32,6 +33,13 @@ interface ChatState {
   // Streaming helpers
   startStreamingMessage: (content?: string) => string;
   finishStreamingMessage: (id: string) => void;
+
+  // Message navigation helpers
+  getMessageById: (id: string) => ChatMessage | undefined;
+  getMessageByIndex: (index: number) => ChatMessage | undefined;
+  getNextMessage: (id: string) => ChatMessage | undefined;
+  getPreviousMessage: (id: string) => ChatMessage | undefined;
+  getMessageIndex: (id: string) => number;
 }
 
 export const useChatStore = create<ChatState>()(
@@ -49,6 +57,19 @@ export const useChatStore = create<ChatState>()(
           ...messageData,
           id: crypto.randomUUID(),
           timestamp: new Date().toISOString(),
+        };
+
+        set((state) => ({
+          messages: [...state.messages, message],
+        }));
+
+        return message.id;
+      },
+
+      // Add a new message
+      addHistoryMessage: (messageData) => {
+        const message: ChatMessage = {
+          ...messageData,
         };
 
         set((state) => ({
@@ -105,6 +126,7 @@ export const useChatStore = create<ChatState>()(
       // Add component message
       addComponentMessage: (componentType, componentData, content) => {
         const id = crypto.randomUUID();
+
         const flag = {
           __type: `${componentType}-FLAG`,
           id: id,
@@ -174,6 +196,45 @@ export const useChatStore = create<ChatState>()(
           isStreaming: false,
         }));
       },
+
+      // Get message by ID
+      getMessageById: (id) => {
+        return get().messages.find((msg) => msg.id === id);
+      },
+
+      // Get message by Index
+      getMessageByIndex: (index) => {
+        return get().messages[index];
+      },
+
+      // Get message index by ID
+      getMessageIndex: (id) => {
+        return get().messages.findIndex((msg) => msg.id === id);
+      },
+
+      // Get next message after given ID
+      getNextMessage: (id) => {
+        const messages = get().messages;
+        const currentIndex = messages.findIndex((msg) => msg.id === id);
+
+        if (currentIndex === -1 || currentIndex === messages.length - 1) {
+          return undefined;
+        }
+
+        return messages[currentIndex + 1];
+      },
+
+      // Get previous message before given ID
+      getPreviousMessage: (id) => {
+        const messages = get().messages;
+        const currentIndex = messages.findIndex((msg) => msg.id === id);
+
+        if (currentIndex === -1 || currentIndex === 0) {
+          return undefined;
+        }
+
+        return messages[currentIndex - 1];
+      },
     }),
     {
       name: "vibecraft-chat-store",
@@ -186,12 +247,18 @@ export const useChatActions = () => {
   const store = useChatStore();
   return {
     addMessage: store.addMessage,
+    addHistoryMessage: store.addHistoryMessage,
     updateMessage: store.updateMessage,
     clearMessages: store.clearMessages,
     addComponentMessage: store.addComponentMessage,
     startStreamingMessage: store.startStreamingMessage,
     finishStreamingMessage: store.finishStreamingMessage,
     appendToMessage: store.appendToMessage,
+    getMessageById: store.getMessageById,
+    getMessageByIndex: store.getMessageByIndex,
+    getNextMessage: store.getNextMessage,
+    getPreviousMessage: store.getPreviousMessage,
+    getMessageIndex: store.getMessageIndex,
   };
 };
 

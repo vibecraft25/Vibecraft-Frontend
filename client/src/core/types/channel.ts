@@ -41,6 +41,7 @@ export interface ChannelMeta {
   updatedAt: string;
   isCompleted: boolean;
   lastActivity?: string;
+  lastEndpoint?: string;
 }
 
 export interface ChannelHistory {

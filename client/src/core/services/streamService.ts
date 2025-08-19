@@ -134,35 +134,41 @@ export class StreamService {
       };
     }
 
-    // 데이터프레임 형태 처리
-    if (dataInfo.length >= 2) {
-      const title = dataInfo[0];
-      const headerString = dataInfo[1];
-
-      // 컬럼 파싱
-      const columns = this.parseColumns(headerString);
-
-      // 데이터 행 파싱
-      const dataRows = dataInfo.slice(2);
-      const rows = dataRows.map((rowString) =>
-        this.parseRow(rowString, columns.length)
-      );
-
-      return {
-        type: "table",
-        componentType: ComponentType.DATA_TABLE,
-        data: {
-          title: title || "데이터 테이블",
-          columns,
-          rows,
-        },
-      };
-    }
-
     return {
-      type: "unknown",
+      type: "table",
       data: dataInfo,
     };
+
+    // 250819 - DataTable 컴포넌트에서 처리
+    // // 데이터프레임 형태 처리
+    // if (dataInfo.length >= 2) {
+    //   const title = dataInfo[0];
+    //   const headerString = dataInfo[1];
+
+    //   // 컬럼 파싱
+    //   const columns = this.parseColumns(headerString);
+
+    //   // 데이터 행 파싱
+    //   const dataRows = dataInfo.slice(2);
+    //   const rows = dataRows.map((rowString) =>
+    //     this.parseRow(rowString, columns.length)
+    //   );
+
+    //   return {
+    //     type: "table",
+    //     componentType: ComponentType.DATA_TABLE,
+    //     data: {
+    //       title: title || "데이터 테이블",
+    //       columns,
+    //       rows,
+    //     },
+    //   };
+    // }
+
+    // return {
+    //   type: "unknown",
+    //   data: dataInfo,
+    // };
   }
 
   /**

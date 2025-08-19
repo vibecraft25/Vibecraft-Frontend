@@ -281,13 +281,7 @@ export const useChannelStore = create<ChannelState>()(
             // Restore messages
             chatStore.clearMessages();
             channelData.history.messages.forEach((message) => {
-              chatStore.addMessage({
-                type: message.type,
-                content: message.content,
-                componentType: message.componentType,
-                componentData: message.componentData,
-                metadata: message.metadata,
-              });
+              chatStore.addHistoryMessage(message);
             });
           } else {
             // Clear chat for new/empty channel

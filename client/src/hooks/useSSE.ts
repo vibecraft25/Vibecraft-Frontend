@@ -117,31 +117,35 @@ export const useSSE = (options: UseSSEOptions = {}) => {
       message: string,
       status: DashboardStatus,
       props?: {
+        userMessage?: boolean;
         endpoint?: StreamEndpoint;
         additionalParams?: Record<string, string>;
       }
     ) => {
+      const { userMessage = true, endpoint, additionalParams } = props || {};
+
       try {
         // 1. 사용자 메시지를 채팅에 추가
-        addMessage({
-          type: "human",
-          content: message,
-        });
+        if (userMessage) {
+          addMessage({
+            type: "human",
+            content: message,
+          });
+        }
 
-        const _endpoint = props?.endpoint ?? API_ENDPOINTS[status];
+        const _endpoint = endpoint ?? API_ENDPOINTS[status];
         if (!_endpoint) {
           throw new Error(`Unknown status: ${status}`);
         }
 
         // 2. sseStore의 sendMessage에서 모든 처리 담당
-        await sendMessage(message, status, _endpoint, props?.additionalParams);
+        await sendMessage(message, status, _endpoint, additionalParams);
 
         // if (_endpoint.updateNextStep && options.updateNextStep) {
         //   debugger;
         //   options.updateNextStep();
         // }
         if (_endpoint.updateNextStep && optionsRef.current.updateNextStep) {
-          debugger;
           optionsRef.current.updateNextStep();
         }
 
