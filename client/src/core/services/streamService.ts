@@ -12,7 +12,7 @@ export interface StreamEventHandler {
   onAIEvent?: (data: string, id?: string) => void;
   onMenuEvent?: (data: string, id?: string) => void;
   onDataEvent?: (data: string, id?: string) => void;
-  oErrorEvent?: (data: string, id?: string) => void;
+  onErrorEvent?: (data: string, id?: string) => void;
   onCompleteEvent?: (data: string, id?: string) => void;
 }
 
@@ -66,7 +66,7 @@ export class StreamService {
           break;
 
         case "error":
-          handlers.oErrorEvent?.(
+          handlers.onErrorEvent?.(
             JSON.stringify(event.data),
             crypto.randomUUID()
           );

@@ -1,8 +1,6 @@
 import { useEffect, useCallback, useRef, useState } from "react";
 import { Card, Typography, Empty, Spin } from "antd";
 import { MessageSquare, User, Bot } from "lucide-react";
-import ReactMarkdown from "react-markdown";
-import remarkBreaks from "remark-breaks";
 
 // import { SSEMessage } from "@/hooks/useSSE";
 import {
@@ -17,7 +15,8 @@ import {
 import ComponentRenderer from "@/components/chat/ComponentRenderer";
 import { MenuOption } from "@/components/chat/Menu";
 import { useFileUpload } from "@/hooks/useFileUpload";
-import { API_OPTIONS_ENDPOINTS } from "@/utils/apiEndpoints";
+import { API_ENDPOINTS, API_OPTIONS_ENDPOINTS } from "@/utils/apiEndpoints";
+import Markdown from "@/components/chat/Markdown";
 
 const { Text } = Typography;
 
@@ -54,23 +53,68 @@ const ChatView = ({
   // 파일 업로드 훅 사용
   const { updateFiles } = useFileUpload();
 
+  const formatTime = (timestamp: Date | string) => {
+    return new Date(timestamp).toLocaleTimeString("ko-KR", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
   // 스크롤 이벤트 핸들러
   const handleScroll = () => {
     const container = chatContainerRef.current;
     if (container) {
       const { scrollTop, scrollHeight, clientHeight } = container;
-      const isAtBottom = scrollTop + clientHeight >= scrollHeight - 5; // 5px 여유
+      const isAtBottom = scrollTop + clientHeight >= scrollHeight - 10; // 10px 여유
       isUserScrollingRef.current = !isAtBottom;
     }
+  };
+
+  const mediumScrollToBottom = () => {
+    const container = chatContainerRef.current;
+    if (!container) return;
+
+    const start = container.scrollTop;
+    const end = container.scrollHeight - container.clientHeight;
+    const distance = end - start;
+    const duration = 300; // smooth보다 빠르고 auto보다 부드럽게
+
+    let startTime: number | null = null;
+
+    const animate = (currentTime: number) => {
+      if (!startTime) startTime = currentTime;
+      const elapsed = currentTime - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+
+      // easeOut 효과로 자연스럽게
+      const easeOut = 1 - Math.pow(1 - progress, 2);
+
+      container.scrollTop = start + distance * easeOut;
+
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      }
+    };
+
+    requestAnimationFrame(animate);
   };
 
   const handleMenuOptionSelect = useCallback(
     async (selectedOption: MenuOption) => {
       console.log("📋 메뉴 옵션 선택:", selectedOption);
 
-      // TODO : 이전 선택값 저장 로직 추가
-
-      if (channelMeta.lastStatus === "TOPIC") {
+      // 컴포넌트 선택 완료 custom handler
+      if (selectedOption.value === "BUILD") {
+        if (!channelMeta.threadId) return;
+        debugger;
+        await sendMessage("코드 생성 실행", channelMeta.lastStatus, {
+          endpoint: API_ENDPOINTS.BUILD,
+          additionalParams: {
+            thread_id: channelMeta.threadId,
+            visualization_type: selectedOption.label,
+          },
+        });
+      } else if (channelMeta.lastStatus === "TOPIC") {
         switch (selectedOption.value) {
           case "1":
             addMessage({
@@ -90,7 +134,7 @@ const ChatView = ({
           default:
             break;
         }
-      } else if (channelMeta.lastStatus === "DATA") {
+      } else if (channelMeta.lastStatus === "DATA_PROCESS") {
         if (!channelMeta.threadId) return;
 
         switch (selectedOption.value) {
@@ -126,7 +170,7 @@ const ChatView = ({
           default:
             break;
         }
-      } else if (channelMeta.lastStatus === "DATA_PROCESS") {
+      } else if (channelMeta.lastStatus === "BUILD") {
         debugger;
         if (!channelMeta.threadId) return;
 
@@ -158,19 +202,19 @@ const ChatView = ({
     [updateFiles]
   );
 
-  // 새 메시지가 오면 스크롤을 아래로 (사용자가 스크롤을 올린 상태가 아닐 때만)
+  // 새 메시지가 오면 스크롤을 아래로
   useEffect(() => {
     if (!isUserScrollingRef.current) {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages]);
 
-  const formatTime = (timestamp: Date | string) => {
-    return new Date(timestamp).toLocaleTimeString("ko-KR", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
+  // isLoading일때 (API 동작중) 스크롤을 아래로
+  useEffect(() => {
+    if (messages.length > 0 && isLoading) {
+      mediumScrollToBottom();
+    }
+  }, [messages, isLoading]);
 
   // 메시지가 없고 로딩 중이 아닐 때
   if (messages.length === 0 && !isLoading) {
@@ -271,23 +315,21 @@ const ChatView = ({
                 message.type === "human"
                   ? "bg-gradient-to-r from-purple-50 to-blue-50 border-purple-200"
                   : "bg-gradient-to-r from-green-50 to-teal-50 border-green-200"
-              } shadow-sm inline-block`}
+              } shadow-sm inline-block max-w-full`}
               styles={{ body: { padding: "12px" } }}
             >
               {/* 컴포넌트 메시지 처리 */}
               {message.componentType ? (
                 <ComponentRenderer
                   message={message}
-                  onMenuOptionSelect={handleMenuOptionSelect}
-                  onUpdateUploadedFiles={handleUpdateUploadedFiles}
                   selectedColumns={selectedColumns}
                   setSelectedColumns={setSelectedColumns}
+                  onMenuOptionSelect={handleMenuOptionSelect}
+                  onUpdateUploadedFiles={handleUpdateUploadedFiles}
                 />
               ) : (
-                <div className="text-gray-800 prose prose-sm max-w-none">
-                  <ReactMarkdown remarkPlugins={[remarkBreaks]}>
-                    {message.content}
-                  </ReactMarkdown>
+                <div className="text-gray-800 prose prose-sm max-w-full overflow-hidden">
+                  <Markdown content={message.content} />
                 </div>
               )}
               {/* 순차 메시지 표시 (만약 sequence 정보가 있다면) */}

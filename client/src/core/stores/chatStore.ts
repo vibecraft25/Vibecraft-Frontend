@@ -61,9 +61,9 @@ export const useChatStore = create<ChatState>()(
       // Update existing message
       updateMessage: (id, updates) => {
         set((state) => ({
-          messages: state.messages.map((msg) =>
-            msg.id === id ? { ...msg, ...updates } : msg
-          ),
+          messages: state.messages.map((msg) => {
+            return msg.id === id ? { ...msg, ...updates } : msg;
+          }),
         }));
       },
 
@@ -104,12 +104,29 @@ export const useChatStore = create<ChatState>()(
 
       // Add component message
       addComponentMessage: (componentType, componentData, content) => {
+        const id = crypto.randomUUID();
+        const flag = {
+          __type: `${componentType}-FLAG`,
+          id: id,
+          selected: "",
+        };
+
+        let processedComponentData;
+
+        if (Array.isArray(componentData)) {
+          // string[] 인 경우
+          processedComponentData = [JSON.stringify(flag), ...componentData];
+        } else {
+          // object 인 경우
+          processedComponentData = { flag: flag, ...componentData };
+        }
+
         const message: ChatMessage = {
-          id: crypto.randomUUID(),
+          id: id,
           type: "component",
           content,
           componentType,
-          componentData,
+          componentData: processedComponentData,
           timestamp: new Date().toISOString(),
         };
 

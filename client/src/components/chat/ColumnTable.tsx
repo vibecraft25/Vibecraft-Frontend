@@ -1,3 +1,4 @@
+import { getApiResponse } from "@/utils/apiEndpoints";
 import { Table, Checkbox } from "antd";
 import { useState, useEffect } from "react";
 
@@ -11,15 +12,25 @@ interface ColumnTableProps {
   setSelectedColumns?: (columns: string[]) => void;
 }
 
-const ColumnTable = ({ tableData, selectedColumns = [], setSelectedColumns }: ColumnTableProps) => {
+const ColumnTable = ({
+  tableData,
+  selectedColumns = [],
+  setSelectedColumns,
+}: ColumnTableProps) => {
+  // {
+  // 	"__type": "DATA_TABLE-FLAG",
+  // 	"id": "b86907bf-fabb-41c0-9737-d31bfa278aa7",
+  // 	"selected": "" 나중에 여기에 selected 넣을 예정
+  // }
+
   // 컬럼 선택 핸들러
   const handleColumnSelect = (columnName: string, checked: boolean) => {
     if (!setSelectedColumns) return;
-    
+
     if (checked) {
       setSelectedColumns([...selectedColumns, columnName]);
     } else {
-      setSelectedColumns(selectedColumns.filter(col => col !== columnName));
+      setSelectedColumns(selectedColumns.filter((col) => col !== columnName));
     }
   };
 
@@ -45,6 +56,10 @@ const ColumnTable = ({ tableData, selectedColumns = [], setSelectedColumns }: Co
     });
     return rowData;
   });
+
+  useEffect(() => {
+    // await getApiResponse(endpoint.api, params);
+  }, []);
 
   return (
     <div className="space-y-4">
