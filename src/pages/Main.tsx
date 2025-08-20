@@ -4,7 +4,8 @@ import { Database } from "lucide-react";
 import { useChannel } from "@/hooks/useChannel";
 
 import Sidebar from "./Sidebar";
-import PromptBox from "./PromptBox";
+// import PromptBox from "./PromptBox";
+import PromptBox from "./PromptBox_approve";
 import ChatView from "./ChatView";
 import Process from "@/components/Process";
 import { useSSE } from "@/hooks";

@@ -143,7 +143,6 @@ const ChatView = ({
       } else if (channelMeta.lastStatus === "DATA_PROCESS") {
         if (!channelMeta.threadId) return;
 
-        debugger;
         // 컬럼 삭제 프로세스
         if (channelMeta.lastEndpoint === "/workflow/stream/set-data") {
           switch (selectedOption.value) {

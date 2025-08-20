@@ -155,7 +155,6 @@ const DataTable = ({
 
   const updateMessageTableInfos = useCallback(() => {
     if (parsedTableInfo && parsedTableInfo.selected === "") {
-      debugger;
       updateMessage(parsedTableInfo.id, {
         componentData: [
           JSON.stringify({
@@ -200,7 +199,6 @@ const DataTable = ({
       if (nextMessage && nextMessage.content) {
         recommad = nextMessage.content.split("\n")[0].trim().split(",");
         if (recommad) {
-          debugger;
           setSelectedColumns([...recommad]);
         }
       }
