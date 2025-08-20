@@ -61,5 +61,8 @@ Thumbs.db
 tmp/
 temp/
 
-# Server code
-server/
+# Old project files
+old_project/
+
+# Claude client config
+.claude-client/
