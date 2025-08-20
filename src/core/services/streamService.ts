@@ -39,6 +39,7 @@ export class StreamService {
 
       switch (event.event) {
         case "ai":
+        case "ai_chunk_message":
           if (handlers.onAIEvent) {
             // 각 data 라인을 개별적으로 처리 (실시간 타이핑 효과)
             for (const dataLine of event.data) {

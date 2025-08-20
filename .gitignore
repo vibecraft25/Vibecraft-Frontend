@@ -62,7 +62,7 @@ tmp/
 temp/
 
 # Old project files
-old_project/
+.aa/
 
 # Claude client config
 .claude-client/

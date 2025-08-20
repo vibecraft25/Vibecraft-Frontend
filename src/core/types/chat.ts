@@ -3,6 +3,8 @@
  * Core type definitions for chat messages and interactive components
  */
 
+import { SSEEvent_Type } from "./sse";
+
 export interface ChatMessage {
   id: string;
   type: "ai" | "human" | "component";
@@ -13,7 +15,7 @@ export interface ChatMessage {
   metadata?: {
     threadId?: string;
     isStreaming?: boolean;
-    sseEventType?: "ai" | "menu" | "data" | "complete";
+    sseEventType?: SSEEvent_Type;
   };
 }
 
