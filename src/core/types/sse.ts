@@ -3,8 +3,17 @@
  * Types for Server-Sent Events communication
  */
 
+export type SSEEvent_Type =
+  | "info" // 무시
+  | "ai"
+  | "ai_chunk_message" // ai 로 통합
+  | "menu"
+  | "data"
+  | "error"
+  | "complete";
+
 export interface SSEEvent {
-  event: "ai" | "menu" | "data" | "error" | "complete";
+  event: SSEEvent_Type;
   data: string;
   id?: string;
 }

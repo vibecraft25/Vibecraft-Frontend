@@ -279,6 +279,7 @@ export const useSSEStore = create<SSEState>()(
 
           switch (eventType) {
             case "ai":
+            case "ai_chunk_message":
               get().handleAIEvent(data);
               break;
 
@@ -301,6 +302,9 @@ export const useSSEStore = create<SSEState>()(
                 type: "ai",
                 content: `⚠️ 오류가 발생했습니다: ${data}`,
               });
+              break;
+
+            case "info":
               break;
 
             case "complete":

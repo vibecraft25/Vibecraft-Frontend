@@ -357,14 +357,6 @@ const ChatView = ({
                   <Markdown content={message.content} />
                 </div>
               )}
-              {/* 순차 메시지 표시 (만약 sequence 정보가 있다면) */}
-              {message.type === "ai" &&
-                (message as any).sequence &&
-                (message as any).total && (
-                  <div className="text-xs text-gray-400 mt-1">
-                    {(message as any).sequence}/{(message as any).total}
-                  </div>
-                )}
             </Card>
           </div>
         </div>
@@ -400,9 +392,6 @@ const ChatView = ({
           </div>
         </div>
       )}
-
-      {/* 파일 업로드 AI 메시지 - DATA 단계에서만 표시 */}
-      {/* {showFileUpload && <Uploader />} */}
 
       {/* 스크롤 앵커 */}
       <div ref={messagesEndRef} />
