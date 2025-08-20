@@ -9,6 +9,7 @@ import {
   useChannelStore,
 } from "@/core";
 import { PromptBoxProcessMessage } from "@/message/prompt";
+import { useFileUpload } from "@/hooks/useFileUpload";
 
 interface PromptBoxProps {
   channelMeta: ChannelMeta;
@@ -32,6 +33,7 @@ const PromptBox = ({ channelMeta, sendMessage }: PromptBoxProps) => {
     threadState === "RECONNECTING";
 
   const { updateChannelMeta } = useChannelStore();
+  const { files, uploadFiles } = useFileUpload();
 
   const [inputText, setInputText] = useState("");
 
@@ -76,11 +78,25 @@ const PromptBox = ({ channelMeta, sendMessage }: PromptBoxProps) => {
         });
       }
 
-      const additionalParams = getAdditionParams(message);
+      let additionalParams = getAdditionParams(message);
+
+      // 데이터 수집 과정에서 업로드 파일이 있으면 서버로 전송
+      if (
+        channelMeta.threadId &&
+        channelMeta.lastStatus === "DATA" &&
+        files.length > 0
+      ) {
+        const res = await uploadFiles(channelMeta.threadId);
+        additionalParams = {
+          ...(additionalParams || {}),
+          code: res.code.split(".")[0],
+        };
+      }
 
       const success = await sendMessage(message, channelMeta.lastStatus, {
         additionalParams: additionalParams,
       });
+
       if (success) {
         console.log("✅ 메시지가 성공적으로 전송되었습니다.");
       } else {
@@ -92,7 +108,12 @@ const PromptBox = ({ channelMeta, sendMessage }: PromptBoxProps) => {
       antMessage.error("메시지 전송 중 오류가 발생했습니다.");
       setInputText(message);
     }
-  }, [inputText, channelMeta.lastStatus, getAdditionParams]);
+  }, [
+    inputText,
+    channelMeta.lastStatus,
+    channelMeta.threadId,
+    getAdditionParams,
+  ]);
 
   // Enter 키로 메시지 전송
   const handleKeyPress = (e: React.KeyboardEvent) => {

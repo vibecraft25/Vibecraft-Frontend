@@ -63,10 +63,10 @@ interface SSEState {
   ) => void;
 
   // Event handlers
-  handleAIEvent: (data: string, id?: string) => void;
-  handleMenuEvent: (data: string, id?: string) => void;
-  handleDataEvent: (data: string, id?: string) => void;
-  handleCompleteEvent: (data: string, id?: string) => void;
+  handleAIEvent: (data: string) => void;
+  handleMenuEvent: (data: string) => void;
+  handleDataEvent: (data: string) => void;
+  handleCompleteEvent: (data: string) => void;
 
   // Streaming management
   startStreaming: (eventType: string) => void;
@@ -226,7 +226,7 @@ export const useSSEStore = create<SSEState>()(
                 }
               }
             }
-            // code generator 처리
+            // TODO : code generator 처리
             else if (endpoint.api.path === "/workflow/code-generator") {
               debugger;
             }
@@ -240,6 +240,14 @@ export const useSSEStore = create<SSEState>()(
           // API 로딩 상태 종료
           const loadingStore = useLoadingStore.getState();
           loadingStore.setLoading("api", false);
+
+          const channelStore = useChannelStore.getState();
+          const currentChannel = channelStore.getCurrentChannel();
+          if (currentChannel) {
+            channelStore.updateChannelMeta(currentChannel.meta.channelId, {
+              lastEndpoint: endpoint.api.path,
+            });
+          }
         }
       },
 
@@ -271,15 +279,15 @@ export const useSSEStore = create<SSEState>()(
 
           switch (eventType) {
             case "ai":
-              get().handleAIEvent(data, id);
+              get().handleAIEvent(data);
               break;
 
             case "menu":
-              get().handleMenuEvent(data, id);
+              get().handleMenuEvent(data);
               break;
 
             case "data":
-              get().handleDataEvent(data, id);
+              get().handleDataEvent(data);
               break;
 
             case "error":
@@ -296,7 +304,7 @@ export const useSSEStore = create<SSEState>()(
               break;
 
             case "complete":
-              get().handleCompleteEvent(data, id);
+              get().handleCompleteEvent(data);
               break;
 
             default:
@@ -306,7 +314,7 @@ export const useSSEStore = create<SSEState>()(
       },
 
       // AI 이벤트 처리 (간소화)
-      handleAIEvent: (data: string, id?: string) => {
+      handleAIEvent: (data: string) => {
         const chatStore = useChatStore.getState();
         const { isStreaming, currentMessageId } = get();
 
@@ -325,7 +333,7 @@ export const useSSEStore = create<SSEState>()(
       },
 
       // 메뉴 이벤트 처리 (간소화)
-      handleMenuEvent: (data: string, id?: string) => {
+      handleMenuEvent: (data: string) => {
         const chatStore = useChatStore.getState();
 
         try {
@@ -343,15 +351,15 @@ export const useSSEStore = create<SSEState>()(
       },
 
       // 데이터 이벤트 처리 (간소화)
-      handleDataEvent: (data: string, id?: string) => {
+      handleDataEvent: (data: string) => {
         const chatStore = useChatStore.getState();
 
         try {
           const processedData = StreamService.processDataEvent(data);
 
-          if (processedData.type === "table" && processedData.componentType) {
+          if (processedData.type === "table") {
             chatStore.addComponentMessage(
-              processedData.componentType,
+              ComponentType.DATA_TABLE,
               processedData.data
             );
           }
@@ -365,7 +373,7 @@ export const useSSEStore = create<SSEState>()(
       },
 
       // 완료 이벤트 처리 (간소화)
-      handleCompleteEvent: (data: string, id?: string) => {
+      handleCompleteEvent: (data: string) => {
         const chatStore = useChatStore.getState();
         const { currentMessageId } = get();
 

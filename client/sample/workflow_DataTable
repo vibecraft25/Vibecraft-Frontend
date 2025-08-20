@@ -1,0 +1,8 @@
+[
+	"{\"__type\":\"DATA_TABLE-FLAG\",\"id\":\"cb1540b3-43aa-4ec8-bac9-5309ff4b49d4\",\"selected\":\"\"}",
+	"📊 최종 데이터프레임 요약:",
+	"PCBang_Name     Address Distance_From_Station_m Base_Hourly_Rate_KRW Member_Hourly_Rate_KRW Max_GPU_Model Max_GPU_Score Avg_RAM_GB Monitor_Refresh_Rate_Hz Num_Seats Smoking_Room_Available Food_Menu_Variety Restroom_Cleanliness Avg_User_Rating Num_Reviews",
+	"까치산PC방 A  까치산로 10길 5                     250                 1500                   1200      RTX 3060          8000         16                     144        80                      O                보통                   좋음             4.2         150",
+	"굿게임PC방  화곡로 13길 22                     400                 1600                   1300      RTX 3070         10000         32                     165       100                      O                높음                   좋음             4.5         230",
+	"레벨업PC방 까치산로 12길 15                     180                 1400                   1100      RTX 3050          6000         16                     144        60                      X                낮음                   보통             3.8          90"
+]

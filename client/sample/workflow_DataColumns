@@ -1,0 +1,20 @@
+{
+  "created_at": "2025-08-19T21:12:29.353779",
+  "column_mapping": {
+    "PC방 이름": "PCBang_Name",
+    "주소": "Address",
+    "장한평역_거리_분": "Distance_From_Janghanpyeong_Min",
+    "시간당_요금_원": "Hourly_Rate_KRW",
+    "5시간_정액권_원": "5hr_Package_Rate_KRW",
+    "CPU_모델": "CPU_Model",
+    "GPU_모델": "GPU_Model",
+    "RAM_GB": "RAM_GB",
+    "모니터_주사율_Hz": "Monitor_Refresh_Rate_Hz",
+    "의자_종류": "Chair_Type",
+    "흡연실_유무": "Smoking_Room_Available",
+    "먹거리_메뉴_수": "Food_Menu_Count",
+    "네이버_평점": "Naver_Rating",
+    "리뷰_수": "Review_Count",
+    "주요_리뷰_키워드": "Main_Review_Keywords"
+  }
+}

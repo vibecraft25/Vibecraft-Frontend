@@ -14,7 +14,6 @@ import {
 
 import ComponentRenderer from "@/components/chat/ComponentRenderer";
 import { MenuOption } from "@/components/chat/Menu";
-import { useFileUpload } from "@/hooks/useFileUpload";
 import { API_ENDPOINTS, API_OPTIONS_ENDPOINTS } from "@/utils/apiEndpoints";
 import Markdown from "@/components/chat/Markdown";
 
@@ -27,6 +26,7 @@ interface ChatViewProps {
     message: string,
     status: DashboardStatus,
     props?: {
+      userMessage?: boolean;
       endpoint?: StreamEndpoint;
       additionalParams?: Record<string, string>;
     }
@@ -41,7 +41,10 @@ const ChatView = ({
   updateNextStep,
 }: ChatViewProps) => {
   // 선택된 컬럼들을 관리하는 상태
-  const [selectedColumns, setSelectedColumns] = useState<string[]>([]);
+  const [selectedColumns, setSelectedColumns] = useState<{
+    recommand: string[];
+    self: string[];
+  }>({ recommand: [], self: [] });
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -49,9 +52,6 @@ const ChatView = ({
 
   const { messages } = useChatState();
   const { addMessage } = useChatActions();
-
-  // 파일 업로드 훅 사용
-  const { updateFiles } = useFileUpload();
 
   const formatTime = (timestamp: Date | string) => {
     return new Date(timestamp).toLocaleTimeString("ko-KR", {
@@ -106,7 +106,6 @@ const ChatView = ({
       // 컴포넌트 선택 완료 custom handler
       if (selectedOption.value === "BUILD") {
         if (!channelMeta.threadId) return;
-        debugger;
         await sendMessage("코드 생성 실행", channelMeta.lastStatus, {
           endpoint: API_ENDPOINTS.BUILD,
           additionalParams: {
@@ -116,6 +115,7 @@ const ChatView = ({
         });
       } else if (channelMeta.lastStatus === "TOPIC") {
         switch (selectedOption.value) {
+          // 결과 진행
           case "1":
             addMessage({
               type: "human",
@@ -127,9 +127,15 @@ const ChatView = ({
               componentType: ComponentType.DATA_UPLOAD,
             });
             break;
+          // 결과 추가수정
           case "2":
             break;
+          // 주제 재설정
           case "3":
+            addMessage({
+              type: "ai",
+              content: "새로운 주제를 입력해주세요.",
+            });
             break;
           default:
             break;
@@ -137,69 +143,81 @@ const ChatView = ({
       } else if (channelMeta.lastStatus === "DATA_PROCESS") {
         if (!channelMeta.threadId) return;
 
-        switch (selectedOption.value) {
-          // 추천 항목 데이터 컬럼명으로 전달
-          case "1":
-            await sendMessage(selectedOption.label, channelMeta.lastStatus, {
-              endpoint: API_OPTIONS_ENDPOINTS.DATA[selectedOption.value],
-              additionalParams: {
-                query: selectedColumns.join(","),
-                thread_id: channelMeta.threadId,
-              },
-            });
-            break;
-          // 선택 항목 데이터 컬럼명으로 전달
-          case "2":
-            await sendMessage(selectedOption.label, channelMeta.lastStatus, {
-              endpoint: API_OPTIONS_ENDPOINTS.DATA[selectedOption.value],
-              additionalParams: {
-                query: selectedColumns.join(","),
-                thread_id: channelMeta.threadId,
-              },
-            });
-            break;
-          // 시각화 방식 추천
-          case "3":
-            await sendMessage(selectedOption.label, channelMeta.lastStatus, {
-              endpoint: API_OPTIONS_ENDPOINTS.DATA[selectedOption.value],
-              additionalParams: {
-                thread_id: channelMeta.threadId,
-              },
-            });
-            break;
-          default:
-            break;
-        }
-      } else if (channelMeta.lastStatus === "BUILD") {
         debugger;
-        if (!channelMeta.threadId) return;
-
-        switch (selectedOption.value) {
-          // 컬럼 추가 수정
-          case "1":
-            break;
-          // 시각화 방식 추천
-          case "2":
-            await sendMessage(selectedOption.label, channelMeta.lastStatus, {
-              endpoint: API_OPTIONS_ENDPOINTS.DATA[selectedOption.value],
-              additionalParams: {
-                thread_id: channelMeta.threadId,
-              },
-            });
-            break;
-          default:
-            break;
+        // 컬럼 삭제 프로세스
+        if (channelMeta.lastEndpoint === "/workflow/stream/set-data") {
+          switch (selectedOption.value) {
+            // 추천 항목 데이터 컬럼명으로 전달
+            case "1":
+              addMessage({
+                type: "human",
+                content: `${
+                  selectedOption.label
+                } ➡️ [ ${selectedColumns.recommand.join(",")} ] 컬럼 삭제`,
+              });
+              await sendMessage(selectedOption.label, channelMeta.lastStatus, {
+                userMessage: false,
+                endpoint: API_OPTIONS_ENDPOINTS.DATA[selectedOption.value],
+                additionalParams: {
+                  query: selectedColumns.recommand.join(","),
+                  thread_id: channelMeta.threadId,
+                },
+              });
+              break;
+            // 선택 항목 데이터 컬럼명으로 전달
+            case "2":
+              addMessage({
+                type: "human",
+                content: `${
+                  selectedOption.label
+                } ➡️ [ ${selectedColumns.self.join(",")} ] 컬럼 삭제`,
+              });
+              await sendMessage(selectedOption.label, channelMeta.lastStatus, {
+                userMessage: false,
+                endpoint: API_OPTIONS_ENDPOINTS.DATA[selectedOption.value],
+                additionalParams: {
+                  query: selectedColumns.self.join(","),
+                  thread_id: channelMeta.threadId,
+                },
+              });
+              break;
+            // 시각화 방식 추천
+            case "3":
+              await sendMessage(selectedOption.label, channelMeta.lastStatus, {
+                endpoint: API_OPTIONS_ENDPOINTS.DATA[selectedOption.value],
+                additionalParams: {
+                  thread_id: channelMeta.threadId,
+                },
+              });
+              break;
+            default:
+              break;
+          }
+        }
+        // 추가 수정 프로세스
+        else if (
+          channelMeta.lastEndpoint === "/workflow/stream/process-data-selection"
+        ) {
+          switch (selectedOption.value) {
+            // 컬럼 추가 수정
+            case "1":
+              break;
+            // 시각화 방식 추천
+            case "2":
+              await sendMessage(selectedOption.label, channelMeta.lastStatus, {
+                endpoint: API_OPTIONS_ENDPOINTS.DATA[channelMeta.lastEndpoint],
+                additionalParams: {
+                  thread_id: channelMeta.threadId,
+                },
+              });
+              break;
+            default:
+              break;
+          }
         }
       }
     },
-    [channelMeta, selectedColumns]
-  );
-
-  const handleUpdateUploadedFiles = useCallback(
-    (files: any) => {
-      updateFiles(files);
-    },
-    [updateFiles]
+    [channelMeta, selectedColumns.recommand, selectedColumns.self]
   );
 
   // 새 메시지가 오면 스크롤을 아래로
@@ -322,10 +340,18 @@ const ChatView = ({
               {message.componentType ? (
                 <ComponentRenderer
                   message={message}
-                  selectedColumns={selectedColumns}
-                  setSelectedColumns={setSelectedColumns}
+                  threadId={channelMeta.threadId}
+                  lastEndpoint={channelMeta.lastEndpoint}
+                  selectedColumns={selectedColumns.self}
+                  setSelectedColumns={(columns: string[]) => {
+                    setSelectedColumns((prev) => ({
+                      ...prev,
+                      self: columns,
+                      recommand:
+                        prev.recommand.length === 0 ? columns : prev.recommand,
+                    }));
+                  }}
                   onMenuOptionSelect={handleMenuOptionSelect}
-                  onUpdateUploadedFiles={handleUpdateUploadedFiles}
                 />
               ) : (
                 <div className="text-gray-800 prose prose-sm max-w-full overflow-hidden">

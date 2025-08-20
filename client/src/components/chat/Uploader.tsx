@@ -1,23 +1,48 @@
-import { useState } from "react";
-import { Upload, Button, message as antMessage } from "antd";
-import { Upload as UploadIcon, FileText } from "lucide-react";
-import { UploaderProps, SUPPORTED_FILE_EXTENSIONS } from "@/types/upload";
-import { validateFile, formatUploadedFiles } from "@/utils/fileUtils";
+import { useCallback } from "react";
+import { Upload, message as antMessage } from "antd";
+import { Upload as UploadIcon, FileText, Trash2 } from "lucide-react";
+import { SUPPORTED_FILE_EXTENSIONS } from "@/types/upload";
+import { validateFile } from "@/utils/fileUtils";
+import { useFileUpload } from "@/hooks/useFileUpload";
 
-const Uploader = ({ onUpdateUploadedFiles }: UploaderProps) => {
-  const [uploadedFiles, setUploadedFiles] = useState<any[]>([]);
+// 🚩 TEMPORARY: Single file mode flag
+// Set to false to enable multiple file uploads
+const SINGLE_FILE_MODE = true;
+
+const Uploader = () => {
+  // 파일 업로드 훅 사용
+  const { files, updateFiles } = useFileUpload();
+
+  // const [uploadedFiles, setUploadedFiles] = useState<any[]>([]);
 
   // 파일 업로드 핸들러
-  const handleFileUpload = (info: any) => {
-    const { fileList } = info;
-    setUploadedFiles(fileList);
+  const handleFileUpload = useCallback(
+    (info: any) => {
+      const { fileList } = info;
+      // 실제 File 객체들 추출하여 전역 store 업데이트
+      const rawFiles = fileList
+        .map((item: any) => item.originFileObj || item)
+        .filter(Boolean);
+      updateFiles(rawFiles);
+    },
+    [files]
+  );
 
-    // 상위 컴포넌트에 파일 목록 업데이트
-    if (onUpdateUploadedFiles) {
-      const formattedFiles = formatUploadedFiles(fileList);
-      onUpdateUploadedFiles(formattedFiles);
-    }
-  };
+  // 파일 삭제 핸들러
+  const handleFileRemove = useCallback(
+    (indexToRemove: number) => {
+      const updatedFiles = files.filter((_, index) => index !== indexToRemove);
+
+      // 실제 File 객체들 추출하여 전역 store 업데이트
+      const rawFiles = updatedFiles
+        .map((item: any) => item.originFileObj || item)
+        .filter(Boolean);
+      updateFiles(rawFiles);
+
+      antMessage.success("파일이 삭제되었습니다.");
+    },
+    [files]
+  );
 
   // 파일 업로드 전 검증
   const beforeUpload = (file: File) => {
@@ -26,6 +51,11 @@ const Uploader = ({ onUpdateUploadedFiles }: UploaderProps) => {
     if (!validation.isValid) {
       antMessage.error(validation.error);
       return false;
+    }
+
+    // 🚩 SINGLE FILE MODE: Show message when replacing file
+    if (SINGLE_FILE_MODE && files.length > 0) {
+      antMessage.info("기존 파일이 새 파일로 교체됩니다.");
     }
 
     return false; // 자동 업로드 방지
@@ -52,13 +82,13 @@ const Uploader = ({ onUpdateUploadedFiles }: UploaderProps) => {
       </div>
 
       <Upload.Dragger
-        multiple
+        multiple={!SINGLE_FILE_MODE} // 🚩 SINGLE FILE MODE: Disable multiple uploads
         beforeUpload={beforeUpload}
         onChange={handleFileUpload}
-        // fileList={uploadedFiles}
         accept={SUPPORTED_FILE_EXTENSIONS.join(",")}
         className="bg-white/50 border-dashed border-gray-300 hover:border-green-400 transition-colors"
         style={{ minHeight: "90px" }}
+        showUploadList={false}
       >
         <div className="py-3">
           <UploadIcon className="w-6 h-6 text-gray-400 mx-auto mb-2" />
@@ -66,37 +96,41 @@ const Uploader = ({ onUpdateUploadedFiles }: UploaderProps) => {
             데이터 파일 업로드
           </p>
           <p className="text-xs text-gray-500">
-            CSV, SQL, JSON, XLSX, XLS, TXT 파일을 드래그하거나 클릭 (최대 10MB)
+            {SINGLE_FILE_MODE
+              ? "CSV, SQL, JSON, XLSX, XLS, TXT 파일 1개를 드래그하거나 클릭 (최대 10MB)"
+              : "CSV, SQL, JSON, XLSX, XLS, TXT 파일을 드래그하거나 클릭 (최대 10MB)"}
           </p>
         </div>
       </Upload.Dragger>
 
-      {uploadedFiles.length > 0 && (
+      {files.length > 0 && (
         <div className="mt-3 space-y-2">
-          <p className="text-sm font-medium text-gray-700">업로드된 파일:</p>
-          {uploadedFiles.map((file, idx) => (
-            <div key={idx} className="flex items-center space-x-2 text-sm">
-              <FileText className="w-4 h-4 text-blue-500" />
-              <span className="text-gray-700">{file.name}</span>
-              <span className="text-gray-500">
-                ({(file.size / 1024 / 1024).toFixed(2)} MB)
-              </span>
+          <p className="text-sm font-medium text-gray-700">
+            {SINGLE_FILE_MODE ? "업로드된 파일:" : "업로드된 파일:"}
+          </p>
+          {files.map((file, idx) => (
+            <div
+              key={idx}
+              className="flex items-center justify-between text-sm"
+            >
+              <div className="flex items-center space-x-2 flex-1">
+                <FileText className="w-4 h-4 text-blue-500" />
+                <span className="text-gray-700">{file.name}</span>
+                <span className="text-gray-500">
+                  ({(file.size / 1024 / 1024).toFixed(2)} MB)
+                </span>
+              </div>
+              <button
+                onClick={() => handleFileRemove(idx)}
+                className="ml-2 p-1 text-gray-400 hover:text-red-500 transition-colors"
+                title="파일 삭제"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
             </div>
           ))}
         </div>
       )}
-      {/* <div className="mt-4">
-        <Button
-          type="primary"
-          onClick={() => {
-            // TODO: 파일 전송 로직 구현
-            antMessage.success("파일이 업로드되었습니다!");
-          }}
-          className="bg-blue-500 hover:bg-blue-600"
-        >
-          진행
-        </Button>
-      </div> */}
     </div>
   );
 };

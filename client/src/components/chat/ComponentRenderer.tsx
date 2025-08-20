@@ -1,24 +1,26 @@
+import { ChatMessage, ComponentType } from "@/core";
+
 import Menu, { MenuOption } from "./Menu";
 import Uploader from "./Uploader";
-import ColumnTable from "./ColumnTable";
-
-import { ChatMessage, ComponentType } from "@/core";
-import { UploadedFile } from "@/types/upload";
+// import ColumnTable from "./ColumnTable";
+import DataTable from "./DataTable";
 import Visualize from "./Visualize";
 // import Visualize from "./Visualize";
 
 interface ComponentRendererProps {
   message: ChatMessage;
+  threadId: string | undefined;
+  lastEndpoint: string | undefined;
   selectedColumns: string[];
   setSelectedColumns: (columns: string[]) => void;
   onMenuOptionSelect: (option: MenuOption) => void;
-  onUpdateUploadedFiles: (files: UploadedFile[]) => void;
 }
 
 const ComponentRenderer = ({
   message,
+  threadId,
+  lastEndpoint,
   onMenuOptionSelect,
-  onUpdateUploadedFiles,
   selectedColumns,
   setSelectedColumns,
 }: ComponentRendererProps) => {
@@ -37,12 +39,19 @@ const ComponentRenderer = ({
         ) : null;
 
       case "DATA_UPLOAD":
-        return <Uploader onUpdateUploadedFiles={onUpdateUploadedFiles} />;
+        return <Uploader />;
 
       case "DATA_TABLE":
         return (
-          <ColumnTable
+          // <ColumnTable
+          //   tableData={componentData}
+          //   selectedColumns={selectedColumns}
+          //   setSelectedColumns={setSelectedColumns}
+          // />
+          <DataTable
             tableData={componentData}
+            threadId={threadId}
+            lastEndpoint={lastEndpoint}
             selectedColumns={selectedColumns}
             setSelectedColumns={setSelectedColumns}
           />

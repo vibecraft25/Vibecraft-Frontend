@@ -110,9 +110,7 @@ export const API_OPTIONS_ENDPOINTS: Record<
         method: "GET",
       },
     },
-  },
-  DATA_PROCESS: {
-    "2": {
+    "/workflow/stream/process-data-selection": {
       isStream: false,
       updateNextStep: true,
       api: {
@@ -121,6 +119,7 @@ export const API_OPTIONS_ENDPOINTS: Record<
       },
     },
   },
+  DATA_PROCESS: {},
   BUILD: {},
   DEPLOY: {},
 };
