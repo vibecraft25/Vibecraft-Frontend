@@ -1,4 +1,3 @@
-import { DashboardStatus, StreamEndpoint } from "@/core";
 import { API_CONFIG } from "@/config/env";
 
 // API 엔드포인트 구성
@@ -8,121 +7,55 @@ export interface ApiEndpoint {
   params?: Record<string, string>;
 }
 
-// ProcessStatus별 API 엔드포인트 매핑
-export const API_ENDPOINTS: Record<DashboardStatus, StreamEndpoint> = {
-  TOPIC: {
+// 스트림 엔드포인트 정의
+export interface StreamEndpoint {
+  isStream: boolean;
+  api: ApiEndpoint;
+}
+
+// 액션 기반 API 엔드포인트
+export const API_ENDPOINTS = {
+  // 채팅 관련
+  NEW_CHAT: {
     isStream: true,
-    updateNextStep: false,
     api: {
-      path: "/workflow/stream/set-topic",
-      method: "GET",
+      path: "/chat/stream/new-chat",
+      method: "GET" as const,
       params: {
         use_langchain: "true",
       },
     },
   },
-  DATA: {
+  LOAD_CHAT: {
     isStream: true,
-    updateNextStep: true,
     api: {
-      path: "/workflow/stream/set-data",
-      method: "GET",
+      path: "/chat/stream/load-chat",
+      method: "GET" as const,
+      params: {
+        use_langchain: "true",
+      },
     },
   },
-  DATA_PROCESS: {
-    isStream: false,
-    updateNextStep: true,
-    api: {
-      path: "/workflow/visualization-type",
-      method: "GET",
-    },
-  },
-  BUILD: {
-    isStream: true,
-    updateNextStep: true,
-    api: {
-      path: "/workflow/stream/code-generator",
-      method: "GET",
-    },
-  },
-  DEPLOY: {
-    isStream: true,
-    updateNextStep: true,
-    api: {
-      path: "",
-      method: "GET",
-    },
-  },
-};
 
-export const API_OPTIONS_ENDPOINTS: Record<
-  DashboardStatus,
-  Record<string, StreamEndpoint>
-> = {
+  // 워크플로우 관련
   TOPIC: {
-    "1": {
-      isStream: true,
-      updateNextStep: true,
-      api: {
-        path: "/workflow/stream/set-data",
-        method: "GET",
-      },
-    },
-    "2": {
-      isStream: true,
-      updateNextStep: false,
-      api: {
-        path: "/chat/stream/load-chat",
-        method: "GET",
-      },
-    },
-    "3": {
-      isStream: true,
-      updateNextStep: false,
-      api: {
-        path: "/workflow/stream/set-topic",
-        method: "GET",
+    isStream: true,
+    api: {
+      path: "/workflow/stream/topic",
+      method: "GET" as const,
+      params: {
+        use_langchain: "true",
       },
     },
   },
-  DATA: {
-    "1": {
-      isStream: true,
-      updateNextStep: false,
-      api: {
-        path: "/workflow/stream/process-data-selection",
-        method: "GET",
-      },
-    },
-    "2": {
-      isStream: true,
-      updateNextStep: false,
-      api: {
-        path: "/workflow/stream/process-data-selection",
-        method: "GET",
-      },
-    },
-    "3": {
-      isStream: false,
-      updateNextStep: true,
-      api: {
-        path: "/workflow/visualization-type",
-        method: "GET",
-      },
-    },
-    "/workflow/stream/process-data-selection": {
-      isStream: false,
-      updateNextStep: true,
-      api: {
-        path: "/workflow/visualization-type",
-        method: "GET",
-      },
+  RUN: {
+    isStream: true,
+    api: {
+      path: "/workflow/stream/run",
+      method: "GET" as const,
     },
   },
-  DATA_PROCESS: {},
-  BUILD: {},
-  DEPLOY: {},
-};
+} as const;
 
 // HTTP 헤더 구성
 export const getStreamHeaders = (): HeadersInit => ({

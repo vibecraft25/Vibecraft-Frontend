@@ -5,7 +5,7 @@
 
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
-import type { ChannelMeta, DashboardStatus, Channel } from "../types";
+import type { ChannelMeta, Channel } from "../types";
 import { DataService } from "../services/dataService";
 import { useLoadingStore } from "./loadingStore";
 import { useChatStore } from "./chatStore";
@@ -19,10 +19,7 @@ interface ChannelState {
   createChannel: (name: string, description: string) => Promise<string>;
   switchChannel: (channelId: string) => Promise<void>;
   deleteChannel: (channelId: string) => Promise<void>;
-  updateChannelStatus: (
-    channelId: string,
-    status: DashboardStatus
-  ) => Promise<void>;
+  deleteAllChannels: () => Promise<void>;
   updateChannelMeta: (
     channelId: string,
     updates: Partial<ChannelMeta>
@@ -59,8 +56,6 @@ export const useChannelStore = create<ChannelState>()(
             channelId,
             channelName: name,
             description,
-            currentStatus: "TOPIC",
-            lastStatus: "TOPIC",
             threadStatus: "IDLE",
             createdAt: now,
             updatedAt: now,
@@ -135,14 +130,30 @@ export const useChannelStore = create<ChannelState>()(
 
           // Update state
           set((state) => {
+            const currentIndex = state.channels.findIndex(
+              (channel) => channel.meta.channelId === channelId
+            );
+
             const newChannels = state.channels.filter(
               (channel) => channel.meta.channelId !== channelId
             );
 
-            const newCurrentChannelId =
-              state.currentChannelId === channelId
-                ? newChannels[0]?.meta.channelId || null
-                : state.currentChannelId;
+            let newCurrentChannelId = state.currentChannelId;
+
+            // If we deleted the current channel, select the next one below
+            if (state.currentChannelId === channelId) {
+              if (newChannels.length > 0) {
+                // Select the channel at the same index, or the last one if we deleted the last channel
+                const nextIndex = Math.min(
+                  currentIndex,
+                  newChannels.length - 1
+                );
+                newCurrentChannelId =
+                  newChannels[nextIndex]?.meta.channelId || null;
+              } else {
+                newCurrentChannelId = null;
+              }
+            }
 
             return {
               channels: newChannels,
@@ -150,7 +161,7 @@ export const useChannelStore = create<ChannelState>()(
             };
           });
 
-          // If we deleted the current channel, switch to another one
+          // If we deleted the current channel, switch to the selected one
           const { currentChannelId, channels } = get();
           if (currentChannelId && channels.length > 0) {
             await get().switchChannel(currentChannelId);
@@ -166,15 +177,33 @@ export const useChannelStore = create<ChannelState>()(
         }
       },
 
-      // Update channel status
-      updateChannelStatus: async (channelId, status) => {
-        const updates: Partial<ChannelMeta> = {
-          currentStatus: status,
-          lastStatus: status,
-          isCompleted: status === "DEPLOY",
-        };
+      // Delete all channels
+      deleteAllChannels: async () => {
+        const loadingStore = useLoadingStore.getState();
+        loadingStore.setLoading("data", true);
 
-        await get().updateChannelMeta(channelId, updates);
+        try {
+          const { channels } = get();
+
+          // Delete all channels using DataService
+          for (const channel of channels) {
+            await DataService.deleteChannelData(channel.meta.channelId);
+          }
+
+          // Clear state
+          set({
+            channels: [],
+            currentChannelId: null,
+          });
+
+          // Clear chat
+          useChatStore.getState().clearMessages();
+        } catch (error) {
+          console.error("Failed to delete all channels:", error);
+          throw error;
+        } finally {
+          loadingStore.setLoading("data", false);
+        }
       },
 
       // Update channel metadata
@@ -217,8 +246,6 @@ export const useChannelStore = create<ChannelState>()(
               channelId: storedChannel.channelId,
               channelName: storedChannel.name,
               description: storedChannel.description,
-              currentStatus: storedChannel.status as DashboardStatus,
-              lastStatus: storedChannel.status as DashboardStatus,
               threadStatus: "IDLE",
               threadId: storedChannel.threadId,
               createdAt: new Date().toISOString(),
@@ -337,7 +364,7 @@ export const useChannelActions = () => {
     createChannel: store.createChannel,
     switchChannel: store.switchChannel,
     deleteChannel: store.deleteChannel,
-    updateChannelStatus: store.updateChannelStatus,
+    deleteAllChannels: store.deleteAllChannels,
     updateChannelMeta: store.updateChannelMeta,
     loadChannels: store.loadChannels,
   };

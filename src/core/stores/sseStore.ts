@@ -9,7 +9,6 @@ import type {
   SSEConnectionStatus,
   SSEConfig,
   SSEMessage,
-  DashboardStatus,
 } from "../types";
 import { ComponentType } from "../types";
 import { sseService } from "../services/sseService";
@@ -45,7 +44,6 @@ interface SSEState {
   reconnect: () => void;
   sendMessage: (
     message: string,
-    status: DashboardStatus,
     endpoint: StreamEndpoint,
     additionalParams?: Record<string, string>
   ) => Promise<void>;
@@ -135,8 +133,8 @@ export const useSSEStore = create<SSEState>()(
         }
       },
 
-      // Send message to specific status endpoint (simplified)
-      sendMessage: async (message, status, endpoint, additionalParams) => {
+      // Send message to endpoint (simplified)
+      sendMessage: async (message, endpoint, additionalParams) => {
         try {
           // API 로딩 상태 시작
           const loadingStore = useLoadingStore.getState();
@@ -146,7 +144,6 @@ export const useSSEStore = create<SSEState>()(
             // 스트림 API 호출
             const response = await MessageService.sendMessage(
               message,
-              status,
               endpoint,
               additionalParams
             );
@@ -203,7 +200,6 @@ export const useSSEStore = create<SSEState>()(
             // 일반 메시지 전송
             const restMessage = await MessageService.sendMessage(
               message,
-              status,
               endpoint,
               additionalParams
             );
