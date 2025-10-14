@@ -65,26 +65,6 @@ const ComponentRenderer = ({
           />
         );
 
-      // case "BUILD_RESULT":
-      //   return (
-      //     <div className="w-full p-4 bg-green-50 border border-green-200 rounded">
-      //       <div className="text-green-800 font-medium mb-2">빌드 결과</div>
-      //       <div className="text-green-600 text-sm">
-      //         대시보드가 성공적으로 생성되었습니다.
-      //       </div>
-      //     </div>
-      //   );
-
-      // case "DEPLOY_STATUS":
-      //   return (
-      //     <div className="w-full p-4 bg-purple-50 border border-purple-200 rounded">
-      //       <div className="text-purple-800 font-medium mb-2">배포 상태</div>
-      //       <div className="text-purple-600 text-sm">
-      //         배포가 진행 중입니다...
-      //       </div>
-      //     </div>
-      //   );
-
       default:
         console.warn(`Unknown component type: ${componentType}`);
         return null;

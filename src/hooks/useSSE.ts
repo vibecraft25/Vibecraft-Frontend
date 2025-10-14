@@ -5,13 +5,12 @@
 
 import { useEffect, useCallback, useRef, useMemo } from "react";
 import { useSSEActions, useSSEState } from "@/core/stores/sseStore";
-import type { DashboardStatus, SSEConfig } from "@/core/types";
+import type { SSEConfig } from "@/core/types";
 import { StreamEndpoint, useChatActions } from "@/core";
 import { API_CONFIG } from "@/config/env";
 import { API_ENDPOINTS } from "@/utils/apiEndpoints";
 
 interface UseSSEOptions {
-  updateNextStep?: () => void;
   autoConnect?: boolean;
   autoReconnect?: boolean;
   onConnect?: () => void;
@@ -115,7 +114,6 @@ export const useSSE = (options: UseSSEOptions = {}) => {
   const sendSSEMessage = useCallback(
     async (
       message: string,
-      status: DashboardStatus,
       props?: {
         userMessage?: boolean;
         endpoint?: StreamEndpoint;
@@ -133,21 +131,11 @@ export const useSSE = (options: UseSSEOptions = {}) => {
           });
         }
 
-        const _endpoint = endpoint ?? API_ENDPOINTS[status];
-        if (!_endpoint) {
-          throw new Error(`Unknown status: ${status}`);
-        }
+        // 2. 기본 엔드포인트는 NEW_CHAT (새 메시지) 또는 LOAD_CHAT (기존 채팅)
+        const _endpoint = endpoint ?? API_ENDPOINTS.NEW_CHAT;
 
-        // 2. sseStore의 sendMessage에서 모든 처리 담당
-        await sendMessage(message, status, _endpoint, additionalParams);
-
-        // if (_endpoint.updateNextStep && options.updateNextStep) {
-        //   debugger;
-        //   options.updateNextStep();
-        // }
-        if (_endpoint.updateNextStep && optionsRef.current.updateNextStep) {
-          optionsRef.current.updateNextStep();
-        }
+        // 3. sseStore의 sendMessage에서 모든 처리 담당
+        await sendMessage(message, _endpoint, additionalParams);
 
         return true;
       } catch (error) {
@@ -164,7 +152,7 @@ export const useSSE = (options: UseSSEOptions = {}) => {
         return false;
       }
     },
-    [addMessage]
+    [addMessage, sendMessage]
   );
 
   return {

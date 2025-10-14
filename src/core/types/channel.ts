@@ -3,21 +3,6 @@
  * Types for channel metadata and management
  */
 
-export type DashboardStatus =
-  | "TOPIC"
-  | "DATA"
-  | "DATA_PROCESS"
-  | "BUILD"
-  | "DEPLOY";
-
-export const PROCESS_STATUS_ORDER: DashboardStatus[] = [
-  "TOPIC",
-  "DATA",
-  "DATA_PROCESS",
-  "BUILD",
-  "DEPLOY",
-];
-
 export type ThreadState =
   | "FIRST_VISIT" // 최초 방문, 세션 기록 없음, Intro 표시
   | "IDLE" // 세션 없음, 빈 채팅 화면 표시
@@ -33,8 +18,6 @@ export interface ChannelMeta {
   channelId: string;
   channelName: string;
   description: string;
-  currentStatus: DashboardStatus;
-  lastStatus: DashboardStatus;
   threadId?: string;
   threadStatus: ThreadState;
   createdAt: string;
@@ -60,7 +43,6 @@ export interface ChannelOperations {
   create: (name: string, description?: string) => string;
   switch: (channelId: string) => Promise<void>;
   delete: (channelId: string) => Promise<void>;
-  updateStatus: (channelId: string, status: DashboardStatus) => void;
   updateMeta: (channelId: string, updates: Partial<ChannelMeta>) => void;
 }
 

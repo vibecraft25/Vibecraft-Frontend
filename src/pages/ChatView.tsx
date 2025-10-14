@@ -5,16 +5,12 @@ import { MessageSquare, User, Bot } from "lucide-react";
 // import { SSEMessage } from "@/hooks/useSSE";
 import {
   ChannelMeta,
-  ComponentType,
-  DashboardStatus,
   StreamEndpoint,
-  useChatActions,
   useChatState,
 } from "@/core";
 
 import ComponentRenderer from "@/components/chat/ComponentRenderer";
 import { MenuOption } from "@/components/chat/Menu";
-import { API_ENDPOINTS, API_OPTIONS_ENDPOINTS } from "@/utils/apiEndpoints";
 import Markdown from "@/components/chat/Markdown";
 
 const { Text } = Typography;
@@ -24,21 +20,17 @@ interface ChatViewProps {
   isLoading?: boolean;
   sendMessage: (
     message: string,
-    status: DashboardStatus,
     props?: {
       userMessage?: boolean;
       endpoint?: StreamEndpoint;
       additionalParams?: Record<string, string>;
     }
   ) => Promise<boolean>;
-  updateNextStep: () => void;
 }
 
 const ChatView = ({
   channelMeta,
   isLoading = false,
-  sendMessage,
-  updateNextStep,
 }: ChatViewProps) => {
   // 선택된 컬럼들을 관리하는 상태
   const [selectedColumns, setSelectedColumns] = useState<{
@@ -51,7 +43,6 @@ const ChatView = ({
   const isUserScrollingRef = useRef(false);
 
   const { messages } = useChatState();
-  const { addMessage } = useChatActions();
 
   const formatTime = (timestamp: Date | string) => {
     return new Date(timestamp).toLocaleTimeString("ko-KR", {
@@ -102,119 +93,6 @@ const ChatView = ({
   const handleMenuOptionSelect = useCallback(
     async (selectedOption: MenuOption) => {
       console.log("📋 메뉴 옵션 선택:", selectedOption);
-
-      // 컴포넌트 선택 완료 custom handler
-      if (selectedOption.value === "BUILD") {
-        if (!channelMeta.threadId) return;
-        await sendMessage("코드 생성 실행", channelMeta.lastStatus, {
-          endpoint: API_ENDPOINTS.BUILD,
-          additionalParams: {
-            thread_id: channelMeta.threadId,
-            visualization_type: selectedOption.label,
-          },
-        });
-      } else if (channelMeta.lastStatus === "TOPIC") {
-        switch (selectedOption.value) {
-          // 결과 진행
-          case "1":
-            addMessage({
-              type: "human",
-              content: selectedOption.label,
-            });
-            updateNextStep();
-            addMessage({
-              type: "ai",
-              componentType: ComponentType.DATA_UPLOAD,
-            });
-            break;
-          // 결과 추가수정
-          case "2":
-            break;
-          // 주제 재설정
-          case "3":
-            addMessage({
-              type: "ai",
-              content: "새로운 주제를 입력해주세요.",
-            });
-            break;
-          default:
-            break;
-        }
-      } else if (channelMeta.lastStatus === "DATA_PROCESS") {
-        if (!channelMeta.threadId) return;
-
-        // 컬럼 삭제 프로세스
-        if (channelMeta.lastEndpoint === "/workflow/stream/set-data") {
-          switch (selectedOption.value) {
-            // 추천 항목 데이터 컬럼명으로 전달
-            case "1":
-              addMessage({
-                type: "human",
-                content: `${
-                  selectedOption.label
-                } ➡️ [ ${selectedColumns.recommand.join(",")} ] 컬럼 삭제`,
-              });
-              await sendMessage(selectedOption.label, channelMeta.lastStatus, {
-                userMessage: false,
-                endpoint: API_OPTIONS_ENDPOINTS.DATA[selectedOption.value],
-                additionalParams: {
-                  query: selectedColumns.recommand.join(","),
-                  thread_id: channelMeta.threadId,
-                },
-              });
-              break;
-            // 선택 항목 데이터 컬럼명으로 전달
-            case "2":
-              addMessage({
-                type: "human",
-                content: `${
-                  selectedOption.label
-                } ➡️ [ ${selectedColumns.self.join(",")} ] 컬럼 삭제`,
-              });
-              await sendMessage(selectedOption.label, channelMeta.lastStatus, {
-                userMessage: false,
-                endpoint: API_OPTIONS_ENDPOINTS.DATA[selectedOption.value],
-                additionalParams: {
-                  query: selectedColumns.self.join(","),
-                  thread_id: channelMeta.threadId,
-                },
-              });
-              break;
-            // 시각화 방식 추천
-            case "3":
-              await sendMessage(selectedOption.label, channelMeta.lastStatus, {
-                endpoint: API_OPTIONS_ENDPOINTS.DATA[selectedOption.value],
-                additionalParams: {
-                  thread_id: channelMeta.threadId,
-                },
-              });
-              break;
-            default:
-              break;
-          }
-        }
-        // 추가 수정 프로세스
-        else if (
-          channelMeta.lastEndpoint === "/workflow/stream/process-data-selection"
-        ) {
-          switch (selectedOption.value) {
-            // 컬럼 추가 수정
-            case "1":
-              break;
-            // 시각화 방식 추천
-            case "2":
-              await sendMessage(selectedOption.label, channelMeta.lastStatus, {
-                endpoint: API_OPTIONS_ENDPOINTS.DATA[channelMeta.lastEndpoint],
-                additionalParams: {
-                  thread_id: channelMeta.threadId,
-                },
-              });
-              break;
-            default:
-              break;
-          }
-        }
-      }
     },
     [channelMeta, selectedColumns.recommand, selectedColumns.self]
   );

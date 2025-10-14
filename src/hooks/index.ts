@@ -5,7 +5,6 @@
 
 export { useSSE } from "./useSSE";
 export { useChannel } from "./useChannel";
-export { useStorage } from "./useStorage";
 
 // Re-export store hooks for convenience
 export {

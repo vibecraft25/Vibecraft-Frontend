@@ -24,7 +24,6 @@ export type {
   ChannelHistory,
   Channel,
   ChannelOperations,
-  DashboardStatus,
 } from "./channel";
 
 export { STORAGE_KEYS } from "./channel";

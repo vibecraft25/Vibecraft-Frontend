@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button, Typography } from "antd";
 import { Settings, ChevronLeft, ChevronRight } from "lucide-react";
 import Channels, { ChannelsProps } from "./Channels";
+import SettingsPopover from "../components/Settings";
 
 const { Title } = Typography;
 
@@ -54,24 +55,28 @@ const Sidebar = ({ className = "", channelsProps }: SidebarProps) => {
 
           {/* Settings */}
           <div className="p-4 border-t border-gray-200">
-            <Button
-              type="text"
-              icon={<Settings className="w-4 h-4" />}
-              className="w-full justify-start text-gray-600 hover:text-gray-800"
-            >
-              설정
-            </Button>
+            <SettingsPopover>
+              <Button
+                type="text"
+                icon={<Settings className="w-4 h-4" />}
+                className="w-full justify-start text-gray-600 hover:text-gray-800"
+              >
+                설정
+              </Button>
+            </SettingsPopover>
           </div>
         </>
       ) : (
         /* Collapsed State */
         <div className="flex flex-col items-center py-4 space-y-4">
-          <Button
-            type="text"
-            icon={<Settings className="w-4 h-4" />}
-            className="text-gray-600"
-            title="설정"
-          />
+          <SettingsPopover>
+            <Button
+              type="text"
+              icon={<Settings className="w-4 h-4" />}
+              className="text-gray-600"
+              title="설정"
+            />
+          </SettingsPopover>
         </div>
       )}
     </div>

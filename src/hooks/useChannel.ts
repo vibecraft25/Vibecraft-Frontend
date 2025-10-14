@@ -5,13 +5,10 @@
 
 import { useCallback, useEffect } from "react";
 import { useChannelActions, useChannelState } from "@/core/stores/channelStore";
-import type { DashboardStatus } from "@/core/types";
-import { PROCESS_STATUS_ORDER } from "@/core/types/channel";
 
 interface UseChannelOptions {
   autoLoad?: boolean;
   onChannelSwitch?: (channelId: string) => void;
-  onStatusChange?: (status: DashboardStatus) => void;
 }
 
 export const useChannel = (options: UseChannelOptions = {}) => {
@@ -19,7 +16,6 @@ export const useChannel = (options: UseChannelOptions = {}) => {
     createChannel,
     switchChannel,
     deleteChannel,
-    updateChannelStatus,
     loadChannels,
   } = useChannelActions();
 
@@ -38,16 +34,6 @@ export const useChannel = (options: UseChannelOptions = {}) => {
       options.onChannelSwitch(channelState.currentChannelId);
     }
   }, [channelState.currentChannelId, options.onChannelSwitch]);
-
-  // Handle status change callback
-  useEffect(() => {
-    if (
-      channelState.currentChannel?.meta.currentStatus &&
-      options.onStatusChange
-    ) {
-      options.onStatusChange(channelState.currentChannel.meta.currentStatus);
-    }
-  }, [channelState.currentChannel?.meta.currentStatus, options.onStatusChange]);
 
   const createNewChannel = useCallback(
     async (name: string, description: string) => {
@@ -94,46 +80,6 @@ export const useChannel = (options: UseChannelOptions = {}) => {
     [deleteChannel, channelState.channels]
   );
 
-  const updateCurrentChannelStatus = useCallback(
-    async (status: DashboardStatus) => {
-      if (!channelState.currentChannelId) {
-        throw new Error("No active channel to update");
-      }
-
-      try {
-        await updateChannelStatus(channelState.currentChannelId, status);
-      } catch (error) {
-        console.error("Failed to update channel status:", error);
-        throw error;
-      }
-    },
-    [channelState.currentChannelId, updateChannelStatus]
-  );
-
-  const getNextProcessStatus = (current: DashboardStatus): DashboardStatus => {
-    const currentIndex = PROCESS_STATUS_ORDER.indexOf(current);
-    const nextIndex = currentIndex + 1;
-
-    // 마지막 단계인 경우 그대로 유지
-    if (nextIndex >= PROCESS_STATUS_ORDER.length) {
-      return current;
-    }
-
-    return PROCESS_STATUS_ORDER[nextIndex];
-  };
-
-  const updateCurrentChannelNextStep = useCallback(() => {
-    if (channelState.currentChannel) {
-      const current = channelState.currentChannel.meta.lastStatus;
-
-      const nextProcess = getNextProcessStatus(current);
-
-      if (nextProcess !== current) {
-        updateCurrentChannelStatus(nextProcess);
-        console.log("📊 다음 프로세스 단계로 진행:", current, "→", nextProcess);
-      }
-    }
-  }, [channelState.currentChannel]);
 
   const switchToChannel = useCallback(
     async (channelId: string) => {
@@ -148,36 +94,6 @@ export const useChannel = (options: UseChannelOptions = {}) => {
     [switchChannel]
   );
 
-  const getChannelProgress = useCallback(() => {
-    const currentChannel = channelState.currentChannel;
-    if (!currentChannel) return null;
-
-    const statusOrder: DashboardStatus[] = [
-      "TOPIC",
-      "DATA",
-      "DATA_PROCESS",
-      "BUILD",
-      "DEPLOY",
-    ];
-
-    return {
-      last: currentChannel.meta.currentStatus,
-      current: currentChannel.meta.currentStatus,
-      isCompleted: currentChannel.meta.isCompleted,
-    };
-  }, [channelState.currentChannel]);
-
-  const getChannelsByStatus = useCallback(
-    (status?: DashboardStatus) => {
-      if (!status) return channelState.channels;
-
-      return channelState.channels.filter(
-        (channel) => channel.meta.currentStatus === status
-      );
-    },
-    [channelState.channels]
-  );
-
   return {
     // State
     ...channelState,
@@ -186,17 +102,10 @@ export const useChannel = (options: UseChannelOptions = {}) => {
     createChannel: createNewChannel,
     switchChannel: switchToChannel,
     deleteChannel: deleteChannelWithConfirm,
-    updateStatus: updateCurrentChannelStatus,
-    updateNextStep: updateCurrentChannelNextStep,
-
-    // Utility functions
-    getChannelProgress,
-    getChannelsByStatus,
 
     // Computed values
     hasChannels: channelState.channels.length > 0,
     activeChannelName: channelState.currentChannel?.meta.channelName,
-    activeChannelStatus: channelState.currentChannel?.meta.currentStatus,
     isChannelCompleted: channelState.currentChannel?.meta.isCompleted ?? false,
     isChannelLoading: channelState.isChannelLoading, // 채널 전환 중 로딩 상태
     isApiLoading: channelState.isApiLoading, // API 응답 대기 상태
@@ -207,13 +116,6 @@ export const useChannel = (options: UseChannelOptions = {}) => {
       completed: channelState.channels.filter((c) => c.meta.isCompleted).length,
       inProgress: channelState.channels.filter((c) => !c.meta.isCompleted)
         .length,
-      byStatus: {
-        TOPIC: getChannelsByStatus("TOPIC").length,
-        DATA: getChannelsByStatus("DATA").length,
-        DATA_PROCESS: getChannelsByStatus("DATA_PROCESS").length,
-        BUILD: getChannelsByStatus("BUILD").length,
-        DEPLOY: getChannelsByStatus("DEPLOY").length,
-      },
     },
   };
 };

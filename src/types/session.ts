@@ -33,8 +33,6 @@ export type SSEConnectionState =
   | "RECONNECTING"
   | "ERROR";
 
-// export type ProcessStatus = "TOPIC" | "DATA" | "BUILD" | "DEPLOY";
-
 export type ThreadState =
   | "FIRST_VISIT" // 최초 방문, 세션 기록 없음, Intro 표시
   | "IDLE" // 세션 없음, 빈 채팅 화면 표시
@@ -45,6 +43,3 @@ export type ThreadState =
   | "RECEIVING" // 서버 응답 수신 중
   | "RECONNECTING" // 연결 끊어져서 재연결 시도 중
   | "ERROR"; // 오류 상태, 재시도 가능
-
-// 프로세스 상태 타입 정의 (구현은 utils/processStatus.ts로 이동)
-export type ProcessStepState = "completed" | "current" | "editing" | "pending";

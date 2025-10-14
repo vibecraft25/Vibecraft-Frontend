@@ -122,7 +122,7 @@ export class DataService {
             threadId: meta.threadId,
             name: meta.channelName,
             description: meta.description,
-            status: meta.currentStatus,
+            status: "READY",
             lastActivity: meta.lastActivity,
             isCompleted: meta.isCompleted,
           });

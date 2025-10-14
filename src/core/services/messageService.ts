@@ -3,7 +3,7 @@
  * Handles message sending, receiving, and transformation logic
  */
 
-import type { SSEMessage, DashboardStatus } from "../types";
+import type { SSEMessage } from "../types";
 import {
   getStreamApiResponse,
   ApiEndpoint,
@@ -11,32 +11,26 @@ import {
 } from "@/utils/apiEndpoints";
 
 export interface MessageParams {
-  // message: string;
-  // timestamp?: string;
   [key: string]: any;
 }
 
 export interface StreamEndpoint {
   isStream: boolean;
-  updateNextStep: boolean;
   api: ApiEndpoint;
 }
 
 export class MessageService {
   /**
-   * Send message to specific status endpoint with streaming support
+   * Send message to endpoint with streaming support
    */
   static async sendMessage(
-    message: string,
-    _status: DashboardStatus,
+    _message: string,
     endpoint: StreamEndpoint,
     additionalParams?: Record<string, string>
   ): Promise<Response | void> {
     const params: MessageParams = {
       ...endpoint.api.params,
       ...additionalParams,
-      // message,
-      // timestamp: new Date().toISOString(),
     };
 
     try {
