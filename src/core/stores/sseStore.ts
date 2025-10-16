@@ -388,6 +388,14 @@ export const useSSEStore = create<SSEState>()(
           const channelStore = useChannelStore.getState();
           const currentChannel = channelStore.getCurrentChannel();
           if (currentChannel) {
+            // TOPIC 프로세스가 완료되면 DATA_UPLOAD 컴포넌트 추가
+            if (currentChannel.meta.currentProcess === "TOPIC") {
+              chatStore.addMessage({
+                type: "ai",
+                componentType: ComponentType.DATA_UPLOAD,
+              });
+            }
+
             channelStore.updateChannelMeta(currentChannel.meta.channelId, {
               threadId: threadId[0],
               threadStatus: "READY",

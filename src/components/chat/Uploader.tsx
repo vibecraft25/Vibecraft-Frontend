@@ -106,7 +106,7 @@ const Uploader = () => {
       {files.length > 0 && (
         <div className="mt-3 space-y-2">
           <p className="text-sm font-medium text-gray-700">
-            {SINGLE_FILE_MODE ? "업로드된 파일:" : "업로드된 파일:"}
+            {SINGLE_FILE_MODE ? "선택된 파일:" : "선택된 파일:"}
           </p>
           {files.map((file, idx) => (
             <div
@@ -129,6 +129,10 @@ const Uploader = () => {
               </button>
             </div>
           ))}
+          <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
+            <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"></span>
+            메시지 전송 시 자동으로 업로드됩니다
+          </p>
         </div>
       )}
     </div>
