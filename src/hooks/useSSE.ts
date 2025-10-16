@@ -131,8 +131,8 @@ export const useSSE = (options: UseSSEOptions = {}) => {
           });
         }
 
-        // 2. 기본 엔드포인트는 NEW_CHAT (새 메시지) 또는 LOAD_CHAT (기존 채팅)
-        const _endpoint = endpoint ?? API_ENDPOINTS.NEW_CHAT;
+        // 2. 기본 엔드포인트 LOAD_CHAT (기존 채팅)
+        const _endpoint = endpoint ?? API_ENDPOINTS.LOAD_CHAT;
 
         // 3. sseStore의 sendMessage에서 모든 처리 담당
         await sendMessage(message, _endpoint, additionalParams);

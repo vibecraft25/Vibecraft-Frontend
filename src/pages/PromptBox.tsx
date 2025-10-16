@@ -1,12 +1,9 @@
 import React, { useState, useCallback, useRef, useEffect } from "react";
 import { Input, Button, message as antMessage } from "antd";
-import { Send, Sparkles, X, FileText } from "lucide-react";
+import { Send, Sparkles } from "lucide-react";
 
-import {
-  ChannelMeta,
-  StreamEndpoint,
-  useChannelStore,
-} from "@/core";
+import { ChannelMeta, StreamEndpoint, useChannelStore } from "@/core";
+import { API_ENDPOINTS } from "@/utils/apiEndpoints";
 import { useFileUpload } from "@/hooks/useFileUpload";
 
 interface PromptBoxProps {
@@ -20,7 +17,7 @@ interface PromptBoxProps {
   ) => Promise<boolean>;
 }
 
-const PromptBox_approve = ({ channelMeta, sendMessage }: PromptBoxProps) => {
+const PromptBox = ({ channelMeta, sendMessage }: PromptBoxProps) => {
   const threadState = channelMeta.threadStatus;
 
   const disabled =
@@ -30,7 +27,7 @@ const PromptBox_approve = ({ channelMeta, sendMessage }: PromptBoxProps) => {
     threadState === "RECONNECTING";
 
   const { updateChannelMeta } = useChannelStore();
-  const { files, uploadFiles, removeFile, clearAllFiles } = useFileUpload();
+  const { files, uploadFiles, clearAllFiles } = useFileUpload();
 
   const [inputText, setInputText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -47,11 +44,71 @@ const PromptBox_approve = ({ channelMeta, sendMessage }: PromptBoxProps) => {
 
   // API 호출 파라미터 생성
   const getAdditionParams = useCallback(
-    (message: string): Record<string, string> => {
-      return { query: message };
+    (message: string, process?: string): Record<string, string> => {
+      const { currentProcess, threadId, uploadedCode } = channelMeta;
+      const targetProcess = process || currentProcess;
+
+      switch (targetProcess) {
+        case "TOPIC":
+          return { query: message };
+        case "RUN":
+          // RUN 프로세스: thread_id는 필수, code는 있으면 추가
+          const runParams: Record<string, string> = threadId
+            ? { thread_id: threadId }
+            : {};
+          if (uploadedCode) {
+            runParams.code = uploadedCode;
+          }
+          return runParams;
+        case "CHAT":
+          return threadId ? { thread_id: threadId, query: message } : {};
+        default:
+          // currentProcess가 없으면 TOPIC으로 시작
+          return { query: message };
+      }
     },
-    []
+    [channelMeta.currentProcess, channelMeta.threadId, channelMeta.uploadedCode]
   );
+
+  // 프로세스에 따른 엔드포인트 결정
+  const getEndpointByProcess = useCallback(() => {
+    const currentProcess = channelMeta.currentProcess;
+
+    // 프로세스가 없으면 TOPIC부터 시작 (최초 접속)
+    if (!currentProcess) {
+      return API_ENDPOINTS.TOPIC;
+    }
+
+    // 프로세스 순서: TOPIC → RUN → CHAT
+    switch (currentProcess) {
+      case "TOPIC":
+        return API_ENDPOINTS.TOPIC;
+      case "RUN":
+        return API_ENDPOINTS.RUN;
+      case "CHAT":
+        return API_ENDPOINTS.LOAD_CHAT;
+      default:
+        return API_ENDPOINTS.TOPIC;
+    }
+  }, [channelMeta.currentProcess]);
+
+  // 다음 프로세스로 전환
+  const moveToNextProcess = useCallback(() => {
+    const currentProcess = channelMeta.currentProcess;
+
+    if (!currentProcess || currentProcess === "TOPIC") {
+      // TOPIC 완료 → RUN으로 전환
+      updateChannelMeta(channelMeta.channelId, {
+        currentProcess: "RUN",
+      });
+    } else if (currentProcess === "RUN") {
+      // RUN 완료 → CHAT으로 전환
+      updateChannelMeta(channelMeta.channelId, {
+        currentProcess: "CHAT",
+      });
+    }
+    // CHAT 상태에서는 계속 CHAT으로 유지
+  }, [channelMeta.currentProcess, channelMeta.channelId, updateChannelMeta]);
 
   // 중복 실행 방지를 위한 내부 함수
   const executeSubmit = useCallback(
@@ -85,35 +142,62 @@ const PromptBox_approve = ({ channelMeta, sendMessage }: PromptBoxProps) => {
       try {
         console.log(`📤 메시지 전송 시작 (${eventSource}):`, message);
 
-        // 새 채널 Name, description update
+        // 새 채널 생성 시 명시적으로 TOPIC 프로세스 설정
+        let effectiveProcess = channelMeta.currentProcess;
+
         if (channelMeta.channelName === "NewChannel") {
+          effectiveProcess = "TOPIC";
           updateChannelMeta(channelMeta.channelId, {
             channelName: channelMeta.channelId,
             description: message,
+            currentProcess: "TOPIC", // 최초 접속 시 TOPIC으로 시작
           });
         }
 
-        let additionalParams = getAdditionParams(message);
-
-        // 업로드 파일이 있으면 서버로 전송
-        if (channelMeta.threadId && files.length > 0) {
+        // RUN 프로세스에서 파일 업로드 처리 (TOPIC 완료 후 DATA_UPLOAD 컴포넌트에서 업로드한 파일)
+        if (
+          effectiveProcess === "RUN" &&
+          channelMeta.threadId &&
+          files.length > 0
+        ) {
           try {
-            const res = await uploadFiles(channelMeta.threadId);
-            additionalParams = {
-              ...additionalParams,
-              code: res.code.split(".")[0],
-            };
-            // 업로드 성공 후 파일 목록 클리어
-            clearAllFiles();
+            console.log("📎 파일 업로드 중...");
+            const uploadResult = await uploadFiles(channelMeta.threadId);
+
+            if (uploadResult?.code) {
+              // 업로드 성공 시 code를 채널 메타데이터에 저장
+              await updateChannelMeta(channelMeta.channelId, {
+                uploadedCode: uploadResult.code,
+              });
+              console.log(`✅ 파일 업로드 완료: code=${uploadResult.code}`);
+              clearAllFiles();
+            }
           } catch (uploadError) {
-            console.error("파일 업로드 실패:", uploadError);
+            console.error("❌ 파일 업로드 실패:", uploadError);
             antMessage.error("파일 업로드에 실패했습니다.");
             setIsSubmitting(false);
             return;
           }
         }
 
+        // effectiveProcess를 사용하여 파라미터와 엔드포인트 결정
+        const additionalParams = getAdditionParams(message, effectiveProcess);
+        const endpoint = effectiveProcess
+          ? effectiveProcess === "TOPIC"
+            ? API_ENDPOINTS.TOPIC
+            : effectiveProcess === "RUN"
+            ? API_ENDPOINTS.RUN
+            : API_ENDPOINTS.LOAD_CHAT
+          : API_ENDPOINTS.TOPIC;
+
+        console.log(
+          `🔄 현재 프로세스: ${effectiveProcess || "TOPIC"}`,
+          `\n📋 API 파라미터:`,
+          additionalParams
+        );
+
         const success = await sendMessage(message, {
+          endpoint: endpoint,
           additionalParams: additionalParams,
         });
 
@@ -121,6 +205,10 @@ const PromptBox_approve = ({ channelMeta, sendMessage }: PromptBoxProps) => {
           console.log(
             `✅ 메시지가 성공적으로 전송되었습니다 (${eventSource}).`
           );
+
+          // 성공 시 다음 프로세스로 전환
+          moveToNextProcess();
+
           // 성공 시 입력창 클리어 (이미 클리어되어 있지만 확실히)
           setInputText("");
         } else {
@@ -141,11 +229,14 @@ const PromptBox_approve = ({ channelMeta, sendMessage }: PromptBoxProps) => {
       channelMeta.channelName,
       channelMeta.channelId,
       channelMeta.threadId,
+      channelMeta.currentProcess,
       files,
       updateChannelMeta,
       uploadFiles,
       clearAllFiles,
       getAdditionParams,
+      getEndpointByProcess,
+      moveToNextProcess,
       sendMessage,
     ]
   );
@@ -215,57 +306,7 @@ const PromptBox_approve = ({ channelMeta, sendMessage }: PromptBoxProps) => {
   };
 
   return (
-    <div className="w-full space-y-2">
-      {/* 파일 목록 표시 */}
-      {files.length > 0 && (
-        <div className="bg-white/95 backdrop-blur-md rounded-xl border border-blue-200/50 p-3 shadow-sm">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold text-blue-600 flex items-center gap-1">
-              <FileText className="w-3.5 h-3.5" />
-              첨부 파일 ({files.length})
-            </span>
-            <button
-              onClick={() => clearAllFiles()}
-              className="text-xs text-gray-400 hover:text-red-500 transition-colors"
-            >
-              전체 삭제
-            </button>
-          </div>
-          <div className="space-y-1.5">
-            {files.map((file) => (
-              <div
-                key={file.uid}
-                className="flex items-center justify-between bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-2.5 border border-blue-100/50 group hover:border-blue-200 transition-all"
-              >
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <div className="bg-gradient-to-br from-blue-500 to-purple-600 rounded-md p-1.5 flex-shrink-0">
-                    <FileText className="w-3.5 h-3.5 text-white" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-700 truncate">
-                      {file.name}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {(file.size / 1024).toFixed(1)} KB
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => removeFile(file.uid)}
-                  className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full bg-white/50 hover:bg-red-50 text-gray-400 hover:text-red-500 transition-all opacity-0 group-hover:opacity-100"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            ))}
-          </div>
-          <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
-            <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"></span>
-            메시지 전송 시 자동으로 업로드됩니다
-          </p>
-        </div>
-      )}
-
+    <div className="w-full">
       {/* 입력창 */}
       <div className="bg-white/90 backdrop-blur-md rounded-2xl prompt-box-shadow p-4">
         <div className="flex items-center gap-3">
@@ -315,4 +356,4 @@ const PromptBox_approve = ({ channelMeta, sendMessage }: PromptBoxProps) => {
   );
 };
 
-export default PromptBox_approve;
+export default PromptBox;

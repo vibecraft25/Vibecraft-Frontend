@@ -15,17 +15,6 @@ export interface StreamEndpoint {
 
 // 액션 기반 API 엔드포인트
 export const API_ENDPOINTS = {
-  // 채팅 관련
-  NEW_CHAT: {
-    isStream: true,
-    api: {
-      path: "/chat/stream/new-chat",
-      method: "GET" as const,
-      params: {
-        use_langchain: "true",
-      },
-    },
-  },
   LOAD_CHAT: {
     isStream: true,
     api: {
@@ -43,9 +32,6 @@ export const API_ENDPOINTS = {
     api: {
       path: "/workflow/stream/topic",
       method: "GET" as const,
-      params: {
-        use_langchain: "true",
-      },
     },
   },
   RUN: {

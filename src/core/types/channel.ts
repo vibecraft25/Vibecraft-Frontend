@@ -14,6 +14,9 @@ export type ThreadState =
   | "RECONNECTING" // 연결 끊어져서 재연결 시도 중
   | "ERROR"; // 오류 상태, 재시도 가능
 
+// 워크플로우 프로세스 상태
+export type WorkflowProcess = "TOPIC" | "RUN" | "CHAT";
+
 export interface ChannelMeta {
   channelId: string;
   channelName: string;
@@ -25,6 +28,8 @@ export interface ChannelMeta {
   isCompleted: boolean;
   lastActivity?: string;
   lastEndpoint?: string;
+  currentProcess?: WorkflowProcess; // 현재 진행 중인 프로세스
+  uploadedCode?: string; // 업로드된 파일의 code 값
 }
 
 export interface ChannelHistory {

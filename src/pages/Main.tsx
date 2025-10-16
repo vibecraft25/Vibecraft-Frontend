@@ -1,10 +1,7 @@
-import { Button, message as antMessage } from "antd";
-import { Database, Upload as UploadIcon } from "lucide-react";
-import { useState, useCallback } from "react";
+import { Button } from "antd";
+import { Database } from "lucide-react";
 
 import { useChannel } from "@/hooks/useChannel";
-import { useFileUpload } from "@/hooks/useFileUpload";
-import { validateFile } from "@/utils/fileUtils";
 
 import Sidebar from "./Sidebar";
 import PromptBox from "./PromptBox";
@@ -28,10 +25,6 @@ const Main = () => {
 
   const { meta: channelMeta } = currentChannel ?? { meta: undefined };
 
-  // File upload hooks
-  const { addFiles, files } = useFileUpload();
-  const [isDragging, setIsDragging] = useState(false);
-
   // 현재 채팅 제목 계산
   const getCurrentChatTitle = () => {
     if (!channelMeta) return "새로운 채팅";
@@ -39,106 +32,13 @@ const Main = () => {
     return channelMeta.description ?? "채팅 제목 추후 update";
   };
 
-  // Drag and drop handlers
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(true);
-  }, []);
-
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    // 깜빡임 방지: 실제로 컨테이너를 벗어날 때만 isDragging을 false로 설정
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX;
-    const y = e.clientY;
-
-    if (x <= rect.left || x >= rect.right || y <= rect.top || y >= rect.bottom) {
-      setIsDragging(false);
-    }
-  }, []);
-
-  const handleDrop = useCallback(
-    async (e: React.DragEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      setIsDragging(false);
-
-      const droppedFiles = Array.from(e.dataTransfer.files);
-      if (droppedFiles.length === 0) return;
-
-      // Check if file already exists
-      if (files.length > 0) {
-        antMessage.error("이미 첨부된 파일이 있습니다. 기존 파일을 삭제한 후 새 파일을 추가해주세요.");
-        return;
-      }
-
-      // Single file mode - only take the first file
-      const file = droppedFiles[0];
-
-      // Validate file
-      const validation = validateFile(file, 10);
-      if (!validation.isValid) {
-        antMessage.error(validation.error);
-        return;
-      }
-
-      // Add file to store (don't upload yet)
-      addFiles([file]);
-      antMessage.success({
-        content: `${file.name} 파일이 추가되었습니다. 메시지를 입력하고 전송하세요.`,
-        duration: 3,
-      });
-    },
-    [addFiles, files]
-  );
-
   return (
     <div className="h-screen bg-gray-50 flex overflow-hidden">
       {/* Sidebar */}
       <Sidebar channelsProps={{ channels, createChannel, switchChannel }} />
 
       {/* Main Content Area */}
-      <div
-        className="flex-1 flex flex-col min-w-0 h-full relative"
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-      >
-        {/* Drag overlay - 단순한 디자인 */}
-        {isDragging && (
-          <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none">
-            {/* 반투명 배경 */}
-            <div className="absolute inset-0 bg-blue-50/80"></div>
-
-            {/* 점선 테두리 */}
-            <div className="absolute inset-8 border-3 border-dashed border-blue-400 rounded-lg"></div>
-
-            {/* 컨텐츠 */}
-            <div className="relative bg-white rounded-lg p-8 shadow-lg border border-blue-200">
-              {/* 아이콘 */}
-              <div className="flex justify-center mb-4">
-                <div className="bg-blue-500 rounded-lg p-4">
-                  <UploadIcon className="w-12 h-12 text-white" strokeWidth={2} />
-                </div>
-              </div>
-
-              {/* 텍스트 */}
-              <div className="text-center">
-                <h3 className="text-xl font-semibold text-gray-800 mb-2">
-                  파일을 여기에 드롭하세요
-                </h3>
-                <p className="text-gray-600 text-sm mb-3">
-                  CSV, SQL, JSON, XLSX • 최대 10MB
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-
+      <div className="flex-1 flex flex-col min-w-0 h-full relative">
         {/* Content */}
         <div className="flex-1 overflow-hidden">
           <div className="h-full flex flex-col bg-gray-50">
