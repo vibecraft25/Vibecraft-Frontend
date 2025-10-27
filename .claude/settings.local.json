@@ -26,7 +26,8 @@
       "Bash(git fetch:*)",
       "Bash(git restore:*)",
       "Bash(npm run typecheck)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(git branch:*)"
     ],
     "deny": []
   }
