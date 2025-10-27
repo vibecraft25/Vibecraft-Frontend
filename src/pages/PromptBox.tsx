@@ -56,6 +56,7 @@ const PromptBox = ({ channelMeta, sendMessage }: PromptBoxProps) => {
           const runParams: Record<string, string> = threadId
             ? { thread_id: threadId }
             : {};
+
           if (uploadedCode) {
             runParams.code = uploadedCode;
           }
@@ -154,6 +155,7 @@ const PromptBox = ({ channelMeta, sendMessage }: PromptBoxProps) => {
           });
         }
 
+        let uploadedCode = null;
         // RUN 프로세스에서 파일 업로드 처리 (TOPIC 완료 후 DATA_UPLOAD 컴포넌트에서 업로드한 파일)
         if (
           effectiveProcess === "RUN" &&
@@ -165,9 +167,12 @@ const PromptBox = ({ channelMeta, sendMessage }: PromptBoxProps) => {
             const uploadResult = await uploadFiles(channelMeta.threadId);
 
             if (uploadResult?.code) {
+              const uploadResultCode = uploadResult?.code.split(".")[0];
+              uploadedCode = uploadResultCode;
+
               // 업로드 성공 시 code를 채널 메타데이터에 저장
               await updateChannelMeta(channelMeta.channelId, {
-                uploadedCode: uploadResult.code,
+                uploadedCode: uploadResultCode,
               });
               console.log(`✅ 파일 업로드 완료: code=${uploadResult.code}`);
               clearAllFiles();
@@ -198,7 +203,10 @@ const PromptBox = ({ channelMeta, sendMessage }: PromptBoxProps) => {
 
         const success = await sendMessage(message, {
           endpoint: endpoint,
-          additionalParams: additionalParams,
+          additionalParams: {
+            ...additionalParams,
+            ...(uploadedCode && { code: uploadedCode }),
+          },
         });
 
         if (success) {

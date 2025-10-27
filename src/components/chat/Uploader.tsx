@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { Upload, message as antMessage } from "antd";
+import { Button, Upload, message as antMessage } from "antd";
 import { Upload as UploadIcon, FileText, Trash2 } from "lucide-react";
 import { SUPPORTED_FILE_EXTENSIONS } from "@/types/upload";
 import { validateFile } from "@/utils/fileUtils";
@@ -135,6 +135,9 @@ const Uploader = () => {
           </p>
         </div>
       )}
+      {/* <Button>
+        <span> 실행하기 </span>
+      </Button> */}
     </div>
   );
 };

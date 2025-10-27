@@ -41,13 +41,9 @@ const ComponentRenderer = ({
       case "DATA_UPLOAD":
         return <Uploader />;
 
+      /*
       case "DATA_TABLE":
         return (
-          // <ColumnTable
-          //   tableData={componentData}
-          //   selectedColumns={selectedColumns}
-          //   setSelectedColumns={setSelectedColumns}
-          // />
           <DataTable
             tableData={componentData}
             threadId={threadId}
@@ -64,18 +60,26 @@ const ComponentRenderer = ({
             onOptionSelect={onMenuOptionSelect}
           />
         );
+       */
 
       default:
         console.warn(`Unknown component type: ${componentType}`);
-        return null;
+        return undefined;
     }
   };
 
+  const component =
+    message.componentType &&
+    renderComponent(message.componentType, message.componentData);
+
   return (
-    <div className="text-gray-800">
-      {message.componentType &&
-        renderComponent(message.componentType, message.componentData)}
-    </div>
+    component && (
+      <div className="text-gray-800">
+        {/* {message.componentType &&
+          renderComponent(message.componentType, message.componentData)} */}
+        {component}
+      </div>
+    )
   );
 };
 
