@@ -1,0 +1,26 @@
+
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: vibecraft-frontend
+    ports:
+      - "22043:22043"
+    environment:
+      # API Server Configuration
+      - VITE_API_BASE_URL=${VITE_API_BASE_URL:-http://vibecraft-backend:8080}
+      - VITE_API_HOST=${VITE_API_HOST:-vibecraft-backend}
+      - VITE_API_PORT=${VITE_API_PORT:-8080}
+      # Client Configuration
+      - VITE_CLIENT_HOST=${VITE_CLIENT_HOST:-0.0.0.0}
+      - VITE_CLIENT_PORT=${VITE_CLIENT_PORT:-22043}
+      # Environment
+      - VITE_NODE_ENV=${VITE_NODE_ENV:-development}
+    restart: unless-stopped
+    networks:
+      - vibecraft-network
+
+networks:
+  vibecraft-network:
+    external: true
