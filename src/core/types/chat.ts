@@ -26,6 +26,7 @@ export enum ComponentType {
   DATA_VISUALIZE = "DATA_VISUALIZE",
   CODE_BLOCK = "CODE_BLOCK",
   PAGE_VIEWER = "PAGE_VIEWER",
+  ARTIFACT = "ARTIFACT",
 }
 
 // Component Data Types
@@ -80,6 +81,13 @@ export interface PageViewerComponentData {
   height?: number;
 }
 
+export interface ArtifactComponentData {
+  url: string;
+  title?: string;
+  description?: string;
+  height?: number;
+}
+
 // Union type for all component data
 export type ComponentData =
   | MenuComponentData
@@ -87,4 +95,5 @@ export type ComponentData =
   | DataTableComponentData
   | VisualizationRecommendation
   | CodeBlockComponentData
-  | PageViewerComponentData;
+  | PageViewerComponentData
+  | ArtifactComponentData;

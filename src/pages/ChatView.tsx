@@ -12,6 +12,7 @@ import {
 import ComponentRenderer from "@/components/chat/ComponentRenderer";
 import { MenuOption } from "@/components/chat/Menu";
 import Markdown from "@/components/chat/Markdown";
+import StreamingLoad from "@/components/chat/StreamingLoad";
 
 const { Text } = Typography;
 
@@ -233,6 +234,11 @@ const ChatView = ({
               ) : (
                 <div className="text-gray-800 prose prose-sm max-w-full overflow-hidden">
                   <Markdown content={message.content} />
+
+                  {/* 스트리밍 상태 표시 */}
+                  {message.metadata?.isStreaming && (
+                    <StreamingLoad text="답변 생성중" />
+                  )}
                 </div>
               )}
             </Card>
