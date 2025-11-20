@@ -14,6 +14,11 @@ export interface TestMessage {
   artifactTitle?: string;
   artifactDescription?: string;
   isGeneratingArtifact?: boolean;
+  attachedFiles?: Array<{
+    name: string;
+    size: number;
+  }>;
+  images?: string[];
 }
 
 export const useTestSSE = () => {
@@ -32,6 +37,7 @@ export const useTestSSE = () => {
       return new Promise((resolve) => {
         const allMessages = sampleResponseData.messages as Array<{
           content: string;
+          images?: string[];
         }>;
         const currentIndex = sampleIndex % allMessages.length;
         const sampleMessages = [allMessages[currentIndex]];
@@ -42,6 +48,7 @@ export const useTestSSE = () => {
         }
 
         const fullContent = sampleMessages[0].content;
+        const images = sampleMessages[0].images;
         const words = fullContent.split(" ");
 
         let currentContent = "";
@@ -77,13 +84,15 @@ export const useTestSSE = () => {
                     content: currentContent,
                     timestamp: new Date().toISOString(),
                     status: "streaming" as const,
+                    images,
                   },
                 ];
               }
             });
 
-            // 60ms 간격으로 다음 단어 추가 (따다다닥 효과)
-            setTimeout(streamWord, 60);
+            // VC test - 단어 생성 timeout
+            // 40ms 간격으로 다음 단어 추가 (따다다닥 효과)
+            setTimeout(streamWord, 40);
           } else {
             // 스트리밍 완료 - status를 completed로 변경
             setMessages((prev) => {
@@ -113,7 +122,7 @@ export const useTestSSE = () => {
 
   // 사용자 메시지 추가 및 AI 응답 스트리밍
   const sendMessage = useCallback(
-    async (userMessage: string) => {
+    async (userMessage: string, attachedFiles?: File[]) => {
       if (!userMessage.trim()) return;
 
       // 사용자 메시지 추가
@@ -122,14 +131,22 @@ export const useTestSSE = () => {
         type: "human",
         content: userMessage,
         timestamp: new Date().toISOString(),
+        attachedFiles: attachedFiles?.map((file) => ({
+          name: file.name,
+          size: file.size,
+        })),
       };
 
       setMessages((prev) => [...prev, newUserMessage]);
       setSseState("loading");
 
       try {
+        // VC test - 응답 대기 timeout
         // 10~15초 랜덤 timeout
-        const randomTimeout = Math.floor(Math.random() * 5000) + 10000;
+        const randomTimeout =
+          Math.floor(Math.random() * 5000) +
+          (firstAIMessageCompleted ? 5000 : 25000);
+        // const randomTimeout = Math.floor(Math.random() * 5000);
         await new Promise((resolve) => setTimeout(resolve, randomTimeout));
 
         // AI 메시지 ID 미리 생성
@@ -146,7 +163,7 @@ export const useTestSSE = () => {
         setSseState("completed");
       }
     },
-    [streamSampleResponse]
+    [streamSampleResponse, firstAIMessageCompleted]
   );
 
   const clearMessages = useCallback(() => {

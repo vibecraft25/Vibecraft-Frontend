@@ -40,7 +40,8 @@
       "Bash(cp:*)",
       "Bash(dir \"C:\\Users\\znald\\Desktop\\projects\\VibeCraft\\Vibecraft-Frontend\\src\\test\\samples\")",
       "Bash(npm create:*)",
-      "Bash(npx tailwindcss:*)"
+      "Bash(npx tailwindcss:*)",
+      "Bash(dir \"C:\\Users\\znald\\Desktop\\projects\\VibeCraft\\Vibecraft-Frontend\\src\\test\")"
     ],
     "deny": []
   }

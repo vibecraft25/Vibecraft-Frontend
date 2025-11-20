@@ -4,11 +4,13 @@ import clsx from "clsx";
 interface StreamingLoadProps {
   className?: string;
   text?: string;
+  textcolor?: string;
 }
 
 const StreamingLoad = ({
   className,
   text = "답변 생성중",
+  textcolor = "gray-500",
 }: StreamingLoadProps) => {
   const [dotCount, setDotCount] = useState(1);
 
@@ -25,12 +27,18 @@ const StreamingLoad = ({
   return (
     <div
       className={clsx(
-        "mt-2 flex items-center text-gray-500 text-sm font-medium",
-        className
+        "mt-2 flex items-center text-xs font-medium",
+        className,
+        `text-${textcolor}`
       )}
     >
       <span>{text}</span>
-      <span className="inline-block min-w-[1.5em] text-left font-bold text-gray-500 animate-pulse">
+      <span
+        className={clsx(
+          "inline-block min-w-[1.5em] text-left font-bold animate-pulse",
+          `text-${textcolor}`
+        )}
+      >
         {dots}
       </span>
     </div>

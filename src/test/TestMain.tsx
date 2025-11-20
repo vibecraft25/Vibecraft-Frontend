@@ -127,9 +127,10 @@ const TestMain = () => {
       }
 
       try {
+        const filesToSend = [...uploadedFiles];
         setUploadedFiles([]);
         console.log("🚀 메시지 전송 시작...");
-        await sendMessage(prompt);
+        await sendMessage(prompt, filesToSend);
         console.log("📨 메시지 전송 함수 완료");
       } catch (error) {
         console.error("❌ 메시지 전송 실패:", error);
