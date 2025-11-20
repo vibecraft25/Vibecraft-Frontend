@@ -9,6 +9,7 @@ import type { SSEConfig } from "@/core/types";
 import { StreamEndpoint, useChatActions } from "@/core";
 import { API_CONFIG } from "@/config/env";
 import { API_ENDPOINTS } from "@/utils/apiEndpoints";
+import { getRandomTestResponse, simulateStreaming } from "@/utils/streamingSimulator";
 
 interface UseSSEOptions {
   autoConnect?: boolean;
@@ -17,6 +18,7 @@ interface UseSSEOptions {
   onDisconnect?: () => void;
   onError?: (error: string) => void;
   initialParams?: Record<string, string>;
+  testMode?: boolean; // 테스트 모드
 }
 
 export const useSSE = (options: UseSSEOptions = {}) => {
@@ -131,10 +133,51 @@ export const useSSE = (options: UseSSEOptions = {}) => {
           });
         }
 
-        // 2. 기본 엔드포인트 LOAD_CHAT (기존 채팅)
+        // 2. 테스트 모드인 경우 테스트 데이터 사용
+        if (options.testMode) {
+          const testResponse = await getRandomTestResponse();
+          if (!testResponse) {
+            throw new Error("테스트 응답 데이터를 로드할 수 없습니다");
+          }
+
+          // 3. 지연 후 AI 메시지 추가
+          await new Promise((resolve) =>
+            setTimeout(resolve, testResponse.delayMs)
+          );
+
+          let aiContent = "";
+          addMessage({
+            type: "ai",
+            content: aiContent,
+          });
+
+          // 4. 스트리밍 시작
+          return new Promise<boolean>((resolve) => {
+            simulateStreaming({
+              text: testResponse.content,
+              startDelayMs: 0,
+              chunkDelayMs: 30,
+              onChunk: (chunk) => {
+                aiContent += chunk;
+                // 마지막 메시지 업데이트 (실제 구현 필요)
+                // 여기서는 스트리밍 효과만 수행
+              },
+              onComplete: () => {
+                // 최종 메시지 추가
+                addMessage({
+                  type: "ai",
+                  content: testResponse.content,
+                });
+                resolve(true);
+              },
+            });
+          });
+        }
+
+        // 5. 기본 엔드포인트 LOAD_CHAT (기존 채팅)
         const _endpoint = endpoint ?? API_ENDPOINTS.LOAD_CHAT;
 
-        // 3. sseStore의 sendMessage에서 모든 처리 담당
+        // 6. sseStore의 sendMessage에서 모든 처리 담당
         await sendMessage(message, _endpoint, additionalParams);
 
         return true;
@@ -152,7 +195,7 @@ export const useSSE = (options: UseSSEOptions = {}) => {
         return false;
       }
     },
-    [addMessage, sendMessage]
+    [addMessage, sendMessage, options.testMode]
   );
 
   return {

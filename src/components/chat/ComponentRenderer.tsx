@@ -1,4 +1,5 @@
 import { ChatMessage, ComponentType } from "@/core";
+import { useArtifactActions } from "@/core/stores/artifactStore";
 
 import Menu, { MenuOption } from "./Menu";
 import Uploader from "./Uploader";
@@ -24,6 +25,8 @@ const ComponentRenderer = ({
   selectedColumns,
   setSelectedColumns,
 }: ComponentRendererProps) => {
+  const { showArtifact } = useArtifactActions();
+
   const renderComponent = (
     componentType: ComponentType,
     componentData: any
@@ -40,6 +43,31 @@ const ComponentRenderer = ({
 
       case "DATA_UPLOAD":
         return <Uploader />;
+
+      case "ARTIFACT":
+        return (
+          <div className="space-y-2">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-md">
+              <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+              <p className="text-sm text-blue-700 font-medium">
+                {componentData?.title || "Preview System"}가 준비되었습니다
+              </p>
+              <button
+                onClick={() => {
+                  showArtifact(
+                    componentData?.url,
+                    message.id,
+                    componentData?.title,
+                    componentData?.description
+                  );
+                }}
+                className="ml-2 text-sm text-blue-600 hover:text-blue-700 font-medium hover:underline"
+              >
+                보기
+              </button>
+            </div>
+          </div>
+        );
 
       /*
       case "DATA_TABLE":
@@ -63,7 +91,7 @@ const ComponentRenderer = ({
        */
 
       default:
-        console.warn(`Unknown component type: ${componentType}`);
+        console.warn(`⚠️ Unknown component type: ${componentType}`);
         return undefined;
     }
   };
@@ -75,8 +103,6 @@ const ComponentRenderer = ({
   return (
     component && (
       <div className="text-gray-800">
-        {/* {message.componentType &&
-          renderComponent(message.componentType, message.componentData)} */}
         {component}
       </div>
     )
