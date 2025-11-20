@@ -9,6 +9,7 @@ import { useChannelActions, useChannelState } from "@/core/stores/channelStore";
 interface UseChannelOptions {
   autoLoad?: boolean;
   onChannelSwitch?: (channelId: string) => void;
+  testMode?: boolean; // 테스트 모드
 }
 
 export const useChannel = (options: UseChannelOptions = {}) => {

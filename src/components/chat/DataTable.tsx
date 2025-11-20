@@ -14,6 +14,12 @@ const { Text } = Typography;
 
 interface DataTableProps {
   tableData: string[];
+  // tableData: {
+  //   flag: any;
+  //   title: string;
+  //   columns: string[];
+  //   rows: string[][];
+  // };
   threadId: string | undefined;
   lastEndpoint: string | undefined;
   selectedColumns: string[];

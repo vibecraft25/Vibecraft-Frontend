@@ -5,11 +5,7 @@
 
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
-import type {
-  SSEConnectionStatus,
-  SSEConfig,
-  SSEMessage,
-} from "../types";
+import type { SSEConnectionStatus, SSEConfig, SSEMessage } from "../types";
 import { ComponentType } from "../types";
 import { sseService } from "../services/sseService";
 import { MessageService, StreamService } from "../services";
@@ -222,10 +218,10 @@ export const useSSEStore = create<SSEState>()(
                 }
               }
             }
-            // TODO : code generator 처리
-            else if (endpoint.api.path === "/workflow/code-generator") {
-              debugger;
-            }
+            // // TODO : code generator 처리
+            // else if (endpoint.api.path === "/workflow/code-generator") {
+            //   debugger;
+            // }
           }
         } catch (error) {
           const errorMessage =
@@ -287,6 +283,10 @@ export const useSSEStore = create<SSEState>()(
               get().handleDataEvent(data);
               break;
 
+            case "info":
+              // get().handleAIEvent(data);
+              break;
+
             case "error":
               // 에러 상태를 별도로 처리
               get().handleStreamError(data, "stream");
@@ -298,9 +298,6 @@ export const useSSEStore = create<SSEState>()(
                 type: "ai",
                 content: `⚠️ 오류가 발생했습니다: ${data}`,
               });
-              break;
-
-            case "info":
               break;
 
             case "complete":

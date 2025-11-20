@@ -120,56 +120,56 @@ export class StreamService {
   static processDataEvent(data: string): ProcessedDataEvent {
     const dataInfo = MessageService.parseJsonSafely(data);
 
-    if (!Array.isArray(dataInfo) || dataInfo.length === 0) {
-      return {
-        type: "unknown",
-        data: dataInfo,
-      };
-    }
-
-    // 단순 컬럼 정보 (현재 미사용)
-    if (dataInfo.length === 1) {
-      return {
-        type: "unknown",
-        data: dataInfo,
-      };
-    }
-
-    return {
-      type: "table",
-      data: dataInfo,
-    };
-
-    // 250819 - DataTable 컴포넌트에서 처리
-    // // 데이터프레임 형태 처리
-    // if (dataInfo.length >= 2) {
-    //   const title = dataInfo[0];
-    //   const headerString = dataInfo[1];
-
-    //   // 컬럼 파싱
-    //   const columns = this.parseColumns(headerString);
-
-    //   // 데이터 행 파싱
-    //   const dataRows = dataInfo.slice(2);
-    //   const rows = dataRows.map((rowString) =>
-    //     this.parseRow(rowString, columns.length)
-    //   );
-
+    // if (!Array.isArray(dataInfo) || dataInfo.length === 0) {
     //   return {
-    //     type: "table",
-    //     componentType: ComponentType.DATA_TABLE,
-    //     data: {
-    //       title: title || "데이터 테이블",
-    //       columns,
-    //       rows,
-    //     },
+    //     type: "unknown",
+    //     data: dataInfo,
+    //   };
+    // }
+
+    // // 단순 컬럼 정보 (현재 미사용)
+    // if (dataInfo.length === 1) {
+    //   return {
+    //     type: "unknown",
+    //     data: dataInfo,
     //   };
     // }
 
     // return {
-    //   type: "unknown",
+    //   type: "table",
     //   data: dataInfo,
     // };
+
+    // 250819 - DataTable 컴포넌트에서 처리
+    // 데이터프레임 형태 처리
+    if (dataInfo.length >= 2) {
+      const title = dataInfo[0];
+      const headerString = dataInfo[1];
+
+      // 컬럼 파싱
+      const columns = this.parseColumns(headerString);
+
+      // 데이터 행 파싱
+      const dataRows = dataInfo.slice(2);
+      const rows = dataRows.map((rowString: any) =>
+        this.parseRow(rowString, columns.length)
+      );
+
+      return {
+        type: "table",
+        componentType: ComponentType.DATA_TABLE,
+        data: {
+          title: title || "데이터 테이블",
+          columns,
+          rows,
+        },
+      };
+    }
+
+    return {
+      type: "unknown",
+      data: dataInfo,
+    };
   }
 
   /**

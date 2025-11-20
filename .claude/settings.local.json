@@ -26,7 +26,22 @@
       "Bash(git fetch:*)",
       "Bash(git restore:*)",
       "Bash(npm run typecheck)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(git branch:*)",
+      "Bash(npx tsc:*)",
+      "Bash(cat:*)",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_click",
+      "mcp__playwright__browser_type",
+      "mcp__playwright__browser_wait_for",
+      "mcp__playwright__browser_snapshot",
+      "mcp__playwright__browser_console_messages",
+      "mcp__playwright__browser_evaluate",
+      "Bash(cp:*)",
+      "Bash(dir \"C:\\Users\\znald\\Desktop\\projects\\VibeCraft\\Vibecraft-Frontend\\src\\test\\samples\")",
+      "Bash(npm create:*)",
+      "Bash(npx tailwindcss:*)",
+      "Bash(dir \"C:\\Users\\znald\\Desktop\\projects\\VibeCraft\\Vibecraft-Frontend\\src\\test\")"
     ],
     "deny": []
   }
